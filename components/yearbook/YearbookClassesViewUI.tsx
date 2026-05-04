@@ -816,7 +816,8 @@ export default function YearbookClassesViewUI(props: any) {
   }
 
   if (!accessDataLoaded) {
-    return <YearbookSkeleton section={sidebarMode} />
+    const skeletonSection = isCoverView ? 'cover' : sidebarMode
+    return <YearbookSkeleton section={skeletonSection as any} />
   }
 
   return (
