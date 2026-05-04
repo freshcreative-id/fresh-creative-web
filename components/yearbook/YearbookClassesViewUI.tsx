@@ -864,6 +864,7 @@ export default function YearbookClassesViewUI(props: any) {
               requestsByClass={requestsByClass}
               flipbookAccessible={flipbookAccessible}
               aiLabsAccessible={aiLabsAccessible}
+              loading={!accessDataLoaded}
             />
           )}
 
@@ -871,8 +872,17 @@ export default function YearbookClassesViewUI(props: any) {
           {((['classes', 'sambutan'].includes(sidebarMode) || isCoverView)) && (
             <div className="hidden lg:fixed lg:left-16 lg:top-14 lg:w-64 lg:h-[calc(100vh-3.5rem)] lg:flex flex-col lg:z-35 lg:bg-white lg:dark:bg-slate-900 lg:border-r-2 lg:border-slate-900 lg:dark:border-slate-700 shadow-[4px_0_10px_0_rgba(0,0,0,0.05)] dark:shadow-[4px_0_10px_0_rgba(0,0,0,0.2)]">
               {/* Main "Edit" Switcher - Cover, Sambutan, Kelas saja */}
-              {canManage && (
+              {!accessDataLoaded ? (
                 <div className="p-3 bg-slate-50 dark:bg-slate-800/50 border-b-2 border-slate-100 dark:border-slate-700 flex flex-col gap-1.5 shrink-0">
+                  <div className="w-16 h-2 rounded bg-slate-200 dark:bg-slate-700 animate-pulse mb-1" />
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <div className="h-9 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
+                    <div className="h-9 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
+                    <div className="h-9 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse col-span-2" />
+                  </div>
+                </div>
+              ) : canManage && (
+                <div className="p-3 bg-slate-50 dark:bg-slate-800/50 border-b-2 border-slate-100 dark:border-slate-700 flex flex-col gap-1.5 shrink-0 animate-in fade-in duration-300">
                   <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Menu Edit</p>
                   <div className="grid grid-cols-2 gap-1.5">
                     <button
