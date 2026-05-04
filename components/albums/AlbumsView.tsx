@@ -1139,40 +1139,40 @@ export default function AlbumsView({ variant, initialData, fetchUrl = '/api/albu
                 : 'Rp 0'
               const estimasiText = totalEstimasi > 0 ? `${estimasiTerkumpul} / ${estimasiTotal}` : '-'
               return (
-                <div key={album.id} className="rounded-3xl border-2 border-slate-900 bg-white p-5 flex flex-col gap-4 shadow-[2px_2px_0_0_#0f172a] hover:shadow-[2px_2px_0_0_#0f172a] hover:-translate-y-1 hover:-translate-x-1 transition-all">
-                  <div className="space-y-1.5 text-[13px] sm:text-sm font-bold text-slate-600">
-                    <p className="font-black text-slate-900 text-[15px] sm:text-base break-words mb-2">{album.name}</p>
+                <div key={album.id} className="rounded-3xl border-2 border-slate-900 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 flex flex-col gap-4 shadow-[2px_2px_0_0_#0f172a] dark:shadow-[2px_2px_0_0_#334155] hover:shadow-none hover:translate-y-0.5 hover:translate-x-0.5 transition-all">
+                  <div className="space-y-1.5 text-[13px] sm:text-sm font-bold text-slate-600 dark:text-slate-400">
+                    <p className="font-black text-slate-900 dark:text-white text-[15px] sm:text-base break-words mb-2">{album.name}</p>
                     {album.pic_name && (
-                      <p><span className="text-slate-400">Nama:</span> <span className="text-slate-800">{album.pic_name}</span></p>
+                      <p><span className="text-slate-400 dark:text-slate-500">Nama:</span> <span className="text-slate-800 dark:text-slate-200">{album.pic_name}</span></p>
                     )}
-                    <p><span className="text-slate-400">Paket:</span> <span className="text-slate-800">{(album.package_snapshot?.name || album.pricing_packages?.name) || '-'}</span></p>
-                    <p><span className="text-slate-400">Kota:</span> <span className="text-slate-800">{album.school_city || '-'}</span></p>
-                    <p><span className="text-slate-400">WA:</span> <span className="text-slate-800">{album.wa_e164 || '-'}</span></p>
+                    <p><span className="text-slate-400 dark:text-slate-500">Paket:</span> <span className="text-slate-800 dark:text-slate-200">{(album.package_snapshot?.name || album.pricing_packages?.name) || '-'}</span></p>
+                    <p><span className="text-slate-400 dark:text-slate-500">Kota:</span> <span className="text-slate-800 dark:text-slate-200">{album.school_city || '-'}</span></p>
+                    <p><span className="text-slate-400 dark:text-slate-500">WA:</span> <span className="text-slate-800 dark:text-slate-200">{album.wa_e164 || '-'}</span></p>
                     {album.students_count != null && album.students_count > 0 && (
-                      <p><span className="text-slate-400">Siswa:</span> <span className="text-slate-800">{album.students_count}</span></p>
+                      <p><span className="text-slate-400 dark:text-slate-500">Siswa:</span> <span className="text-slate-800 dark:text-slate-200">{album.students_count}</span></p>
                     )}
-                    <p><span className="text-slate-400">Estimasi:</span> <span className="text-slate-800">{estimasiText}</span></p>
+                    <p><span className="text-slate-400 dark:text-slate-500">Estimasi:</span> <span className="text-slate-800 dark:text-slate-200">{estimasiText}</span></p>
                     <div className="mt-2 pt-1 flex flex-wrap gap-2">
                       <span
-                        className={`inline-block px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded border-2 border-slate-900 shadow-[2px_2px_0_0_#0f172a] ${(album.status ?? 'pending') === 'approved' ? 'bg-emerald-300 text-slate-900' :
-                          (album.status ?? 'pending') === 'pending' ? 'bg-orange-300 text-slate-900' :
-                            (album.status ?? 'pending') === 'declined' ? 'bg-red-400 text-white' :
-                              'bg-indigo-300 text-slate-900'
+                        className={`inline-block px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded border-2 border-slate-900 dark:border-slate-700 shadow-[2px_2px_0_0_#0f172a] dark:shadow-[2px_2px_0_0_#334155] ${(album.status ?? 'pending') === 'approved' ? 'bg-emerald-300 dark:bg-emerald-700 text-slate-900 dark:text-white' :
+                          (album.status ?? 'pending') === 'pending' ? 'bg-orange-300 dark:bg-orange-700 text-slate-900 dark:text-white' :
+                            (album.status ?? 'pending') === 'declined' ? 'bg-red-400 dark:bg-red-700 text-white' :
+                              'bg-indigo-300 dark:bg-indigo-700 text-slate-900 dark:text-white'
                           }`}>
                         {album.status ?? 'pending'}
                       </span>
                       {album.type === 'yearbook' && (album.status ?? 'pending') === 'approved' && (
                         <span
-                          className={`inline-block px-2 py-0.5 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded border-2 border-slate-900 shadow-[2px_2px_0_0_#0f172a] ${album.payment_status === 'paid' ? 'bg-emerald-300 text-slate-900' : 'bg-red-400 text-white'}`}>
+                          className={`inline-block px-2 py-0.5 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded border-2 border-slate-900 dark:border-slate-700 shadow-[2px_2px_0_0_#0f172a] dark:shadow-[2px_2px_0_0_#334155] ${album.payment_status === 'paid' ? 'bg-emerald-300 dark:bg-emerald-700 text-slate-900 dark:text-white' : 'bg-red-400 dark:bg-red-700 text-white'}`}>
                           {album.payment_status === 'paid' ? 'Lunas' : 'Belum Bayar'}
                         </span>
                       )}
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-4 border-t-2 border-slate-900">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-4 border-t-2 border-slate-900 dark:border-slate-700">
                     <Link
                       href={destUrl}
-                      className="col-span-2 sm:col-span-1 flex items-center justify-center gap-1 px-3 py-2.5 text-xs font-black rounded-xl bg-sky-400 border-2 border-slate-900 text-slate-900 shadow-[2px_2px_0_0_#0f172a] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all"
+                      className="col-span-2 sm:col-span-1 flex items-center justify-center gap-1 px-3 py-2.5 text-xs font-black rounded-xl bg-sky-400 dark:bg-sky-600 border-2 border-slate-900 dark:border-slate-700 text-slate-900 dark:text-white shadow-[2px_2px_0_0_#0f172a] dark:shadow-[2px_2px_0_0_#334155] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all"
                     >
                       Details <ChevronRight className="w-3.5 h-3.5" />
                     </Link>
@@ -1181,7 +1181,7 @@ export default function AlbumsView({ variant, initialData, fetchUrl = '/api/albu
                         type="button"
                         disabled={!!loadingId}
                         onClick={(e) => { e.preventDefault(); handleApprove(e as any, album) }}
-                        className="flex items-center justify-center gap-1 px-3 py-2.5 text-xs font-black rounded-xl bg-emerald-400 border-2 border-slate-900 text-slate-900 shadow-[2px_2px_0_0_#0f172a] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all disabled:opacity-50"
+                        className="flex items-center justify-center gap-1 px-3 py-2.5 text-xs font-black rounded-xl bg-emerald-400 dark:bg-emerald-600 border-2 border-slate-900 dark:border-slate-700 text-slate-900 dark:text-white shadow-[2px_2px_0_0_#0f172a] dark:shadow-[2px_2px_0_0_#334155] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all disabled:opacity-50"
                       >
                         {isProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} Approve
                       </button>
@@ -1191,7 +1191,7 @@ export default function AlbumsView({ variant, initialData, fetchUrl = '/api/albu
                         type="button"
                         disabled={!!loadingId}
                         onClick={(e) => { e.preventDefault(); handleDecline(e as any, album) }}
-                        className="flex items-center justify-center gap-1 px-3 py-2.5 text-xs font-black rounded-xl bg-orange-400 border-2 border-slate-900 text-slate-900 shadow-[2px_2px_0_0_#0f172a] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all disabled:opacity-50"
+                        className="flex items-center justify-center gap-1 px-3 py-2.5 text-xs font-black rounded-xl bg-orange-400 dark:bg-orange-600 border-2 border-slate-900 dark:border-slate-700 text-slate-900 dark:text-white shadow-[2px_2px_0_0_#0f172a] dark:shadow-[2px_2px_0_0_#334155] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all disabled:opacity-50"
                       >
                         <X className="w-3.5 h-3.5" /> Decline
                       </button>
@@ -1200,7 +1200,7 @@ export default function AlbumsView({ variant, initialData, fetchUrl = '/api/albu
                       type="button"
                       disabled={!!loadingId}
                       onClick={(e) => { e.preventDefault(); handleDelete(e as any, album) }}
-                      className="flex items-center justify-center gap-1 px-3 py-2.5 text-xs font-black rounded-xl bg-red-500 border-2 border-slate-900 text-white shadow-[2px_2px_0_0_#0f172a] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all disabled:opacity-50"
+                      className="flex items-center justify-center gap-1 px-3 py-2.5 text-xs font-black rounded-xl bg-red-500 dark:bg-red-700 border-2 border-slate-900 dark:border-slate-700 text-white shadow-[2px_2px_0_0_#0f172a] dark:shadow-[2px_2px_0_0_#334155] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all disabled:opacity-50"
                     >
                       <Trash2 className="w-3.5 h-3.5" /> Hapus
                     </button>
@@ -1384,18 +1384,18 @@ export default function AlbumsView({ variant, initialData, fetchUrl = '/api/albu
               type="button"
               disabled={currentPage === 1}
               onClick={() => setCurrentPage(p => p - 1)}
-              className="px-4 py-2 text-[13px] font-black rounded-xl bg-white border-2 border-slate-900 text-slate-900 shadow-[2px_2px_0_0_#0f172a] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none disabled:opacity-50 transition-all"
+              className="px-4 py-2 text-[13px] font-black rounded-xl bg-white dark:bg-slate-800 border-2 border-slate-900 dark:border-slate-700 text-slate-900 dark:text-white shadow-[2px_2px_0_0_#0f172a] dark:shadow-[2px_2px_0_0_#334155] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none disabled:opacity-50 transition-all"
             >
               Sebelumnya
             </button>
-            <div className="flex items-center px-4 py-2 text-[13px] font-black bg-indigo-200 border-2 border-slate-900 shadow-[2px_2px_0_0_#0f172a] rounded-xl text-slate-900">
+            <div className="flex items-center px-4 py-2 text-[13px] font-black bg-indigo-200 dark:bg-indigo-900 border-2 border-slate-900 dark:border-slate-700 shadow-[2px_2px_0_0_#0f172a] dark:shadow-[2px_2px_0_0_#334155] rounded-xl text-slate-900 dark:text-white">
               {currentPage} / {totalPages}
             </div>
             <button
               type="button"
               disabled={currentPage === totalPages}
               onClick={() => setCurrentPage(p => p + 1)}
-              className="px-4 py-2 text-[13px] font-black rounded-xl bg-white border-2 border-slate-900 text-slate-900 shadow-[2px_2px_0_0_#0f172a] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none disabled:opacity-50 transition-all"
+              className="px-4 py-2 text-[13px] font-black rounded-xl bg-white dark:bg-slate-800 border-2 border-slate-900 dark:border-slate-700 text-slate-900 dark:text-white shadow-[2px_2px_0_0_#0f172a] dark:shadow-[2px_2px_0_0_#334155] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none disabled:opacity-50 transition-all"
             >
               Selanjutnya
             </button>
