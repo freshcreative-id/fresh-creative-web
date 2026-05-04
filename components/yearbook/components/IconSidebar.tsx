@@ -50,18 +50,7 @@ function IconSidebarInner({
     }
   }
 
-  if (loading) {
-    return (
-      <div className="hidden lg:fixed lg:left-0 lg:top-14 lg:w-16 lg:h-[calc(100vh-3.5rem)] lg:flex flex-col lg:z-40 lg:bg-white lg:dark:bg-slate-900 lg:border-r-2 lg:border-slate-900 lg:dark:border-slate-700 lg:shadow-[2px_0_0_0_#0f172a] lg:dark:shadow-[2px_0_0_0_#334155]">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="py-4 border-b-2 border-slate-900 dark:border-slate-700 w-full flex flex-col items-center gap-1.5">
-            <div className="w-6 h-6 rounded bg-slate-100 dark:bg-slate-800 animate-pulse" />
-            <div className="w-8 h-2 rounded bg-slate-100 dark:bg-slate-800 animate-pulse" />
-          </div>
-        ))}
-      </div>
-    )
-  }
+  if (loading) return null
 
   return (
     <div className="hidden lg:fixed lg:left-0 lg:top-14 lg:w-16 lg:h-[calc(100vh-3.5rem)] lg:flex flex-col lg:z-40 lg:bg-white lg:dark:bg-slate-900 lg:border-r-2 lg:border-slate-900 lg:dark:border-slate-700 lg:shadow-[2px_0_0_0_#0f172a] lg:dark:shadow-[2px_0_0_0_#334155] animate-in fade-in slide-in-from-left-4 duration-500">
