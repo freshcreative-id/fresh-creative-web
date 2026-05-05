@@ -148,11 +148,16 @@ export default function AdminShowcasePage() {
   const [isSavingPortfolio, setIsSavingPortfolio] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const videoFileInputRef = useRef<HTMLInputElement | null>(null)
+  const pendingVideoFileRef = useRef<File | null>(null)
 
   // Portfolio Pagination
   const [currentPage, setCurrentPage] = useState(1)
 
-  const [activeTab, setActiveTab] = useState<ActiveTab>('ebook')
+  const [activeTab, setActiveTab] = useState<ActiveTab>(() => {
+    if (typeof window === 'undefined') return 'ebook'
+    const hash = window.location.hash.replace('#', '') as ActiveTab
+    return VALID_TABS.includes(hash) ? hash : 'ebook'
+  })
   const [itemToDelete, setItemToDelete] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const isAnyModalOpen = !!editingItem || !!itemToDelete
@@ -162,14 +167,12 @@ export default function AdminShowcasePage() {
     [portfolio, currentPage]
   )
 
-  // Sync tab dari hash sebelum paint (useLayoutEffect) supaya effect pushState tidak
-  // sempat menimpa #portfolio menjadi #ebook saat mount.
+  // Sync tab dari hash sebelum paint (useLayoutEffect) untuk navigasi langsung via URL hash.
+  // (State initial sudah derive dari hash juga; ini untuk jaga-jaga bila hash berubah sebelum mount selesai.)
   useLayoutEffect(() => {
     if (typeof window === 'undefined') return
     const hash = window.location.hash.replace('#', '') as ActiveTab
-    if (VALID_TABS.includes(hash)) {
-      setActiveTab(hash)
-    }
+    if (VALID_TABS.includes(hash)) setActiveTab(hash)
   }, [])
 
   useEffect(() => {
@@ -205,6 +208,7 @@ export default function AdminShowcasePage() {
   )
 
   const handleEditItem = useCallback((item: PortfolioItem) => {
+    pendingVideoFileRef.current = null
     setEditingItem(item)
   }, [])
 
@@ -398,7 +402,7 @@ export default function AdminShowcasePage() {
       }
 
       // Handle video
-      const videoFile = videoFileInputRef.current?.files?.[0]
+      const videoFile = pendingVideoFileRef.current ?? videoFileInputRef.current?.files?.[0]
       if (videoFile) {
         formData.append('video', videoFile)
       }
@@ -432,6 +436,7 @@ export default function AdminShowcasePage() {
   }
 
   const openAddPortfolio = () => {
+    pendingVideoFileRef.current = null
     setEditingItem({ id: '', title: '', subtitle: '', description: '', display_order: portfolio.length, image_url: '', video_url: '' })
   }
 
@@ -922,6 +927,7 @@ export default function AdminShowcasePage() {
                                 type="button"
                                 onClick={() => {
                                   if (videoFileInputRef.current) videoFileInputRef.current.value = ''
+                                  pendingVideoFileRef.current = null
                                   setEditingItem({ ...editingItem, video_url: '' })
                                 }}
                                 className="absolute top-2 right-2 p-1.5 rounded-xl bg-rose-500 text-white hover:bg-rose-600 transition-colors shadow-md"
@@ -944,7 +950,11 @@ export default function AdminShowcasePage() {
                               />
                               <button
                                 type="button"
-                                onClick={() => setEditingItem({ ...editingItem, _removeVideo: true, video_url: '' })}
+                                onClick={() => {
+                                  pendingVideoFileRef.current = null
+                                  if (videoFileInputRef.current) videoFileInputRef.current.value = ''
+                                  setEditingItem({ ...editingItem, _removeVideo: true, video_url: '' })
+                                }}
                                 className="absolute top-2 right-2 p-1.5 rounded-xl bg-rose-500 text-white hover:bg-rose-600 transition-colors shadow-md"
                                 title="Hapus video"
                               >
@@ -985,6 +995,7 @@ export default function AdminShowcasePage() {
                                     return
                                   }
                                   const url = URL.createObjectURL(file)
+                                  pendingVideoFileRef.current = file
                                   setEditingItem({ ...editingItem, video_url: url, _removeVideo: false })
                                 }
                               }}
