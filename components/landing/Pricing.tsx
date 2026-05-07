@@ -40,16 +40,15 @@ const PACKAGING_OPTIONS = [
   { id: "none", label: "Tanpa Packaging", add: 0 },
   { id: "tas", label: "Tas Spunbond", add: 25000 },
   { id: "slop", label: "Slop Case Box", add: 35000 },
-  { id: "stemba", label: "Stemba Box", add: 45000 },
-  { id: "semi", label: "Semi MDF Box", add: 75000 },
-  { id: "full", label: "Full MDF Box", add: 120000 },
+  { id: "amplop", label: "Amplop Box", add: 45000 },
+  { id: "custom", label: "Custom Box", add: 0 },
 ] as const;
 
 const FOTOGRAFER_OPTIONS = [
   { id: "tidak", label: "Tidak Perlu", add: 0 },
-  { id: "basic", label: "Paket Basic (Rp 4.5jt)", add: 4500000 },
-  { id: "pro", label: "Paket Pro (Rp 6.3jt)", add: 6300000 },
-  { id: "sultan", label: "Paket Sultan (Rp 8.1jt)", add: 8100000 },
+  { id: "basic", label: "Paket Basic (Rp 6.5jt)", add: 6500000 },
+  { id: "pro", label: "Paket Pro (Rp 8.3jt)", add: 8300000 },
+  { id: "sultan", label: "Paket Sultan (Rp 10.1jt)", add: 10100000 },
 ] as const;
 
 function formatRupiah(n: number) {
@@ -186,7 +185,7 @@ export function Pricing() {
         `Packaging: ${packagingLabel}`,
         "",
         "*Add-ons & Services*",
-        videoCinematic ? "- Video Cinematic: Ya (+Rp 3.000.000)" : "- Video Cinematic: Tidak",
+        videoCinematic ? "- Video Cinematic: Ya (Start from Rp 5.000.000)" : "- Video Cinematic: Tidak",
         `- Fotografer: ${fotograferLabel}`,
         "",
         `Estimasi Per Siswa: ${formatRupiah(estimasi.perSiswa)}`,
@@ -249,7 +248,7 @@ export function Pricing() {
     
     // Shared costs (per siswa, divided by number of students)
     let sharedCost = 0;
-    if (videoCinematic) sharedCost += 3000000;
+    if (videoCinematic) sharedCost += 5000000;
     sharedCost += fotograferOpt.add; // Fotografer cost shared by all students
     const sharedPerStudent = sharedCost / Math.max(1, jumlahSiswa);
     
@@ -647,9 +646,12 @@ export function Pricing() {
                     <label className="text-[11px] sm:text-sm font-medium text-slate-700 dark:text-white/90">
                       Siswa
                     </label>
-                    <span className="text-[11px] sm:text-sm font-semibold text-lime-600 dark:text-lime-400">
-                      {jumlahSiswa}
-                    </span>
+                    <input
+                      type="number"
+                      value={jumlahSiswa}
+                      onChange={(e) => setJumlahSiswa(Number(e.target.value))}
+                      className="w-16 bg-transparent border-none text-right focus:outline-none text-[11px] sm:text-sm font-semibold text-lime-600 dark:text-lime-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
                   </div>
                   <input
                     type="range"
@@ -663,9 +665,12 @@ export function Pricing() {
                 <div>
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-1.5 sm:mb-2">
                     <label className="text-[11px] sm:text-sm font-medium text-slate-700 dark:text-white/90">Kelas</label>
-                    <span className="text-[11px] sm:text-sm font-semibold text-lime-600 dark:text-lime-400">
-                      {jumlahKelas}
-                    </span>
+                    <input
+                      type="number"
+                      value={jumlahKelas}
+                      onChange={(e) => setJumlahKelas(Number(e.target.value))}
+                      className="w-12 bg-transparent border-none text-right focus:outline-none text-[11px] sm:text-sm font-semibold text-lime-600 dark:text-lime-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
                   </div>
                   <input
                     type="range"
@@ -683,9 +688,17 @@ export function Pricing() {
                   <label className="text-[11px] sm:text-sm font-medium text-slate-700 dark:text-white/90">
                     Tebal Buku
                   </label>
-                  <span className="text-[11px] sm:text-sm font-semibold text-lime-600 dark:text-lime-400">
-                    {tebalBuku} Hal
-                  </span>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      value={tebalBuku}
+                      onChange={(e) => setTebalBuku(Number(e.target.value))}
+                      className="w-12 bg-transparent border-none text-right focus:outline-none text-[11px] sm:text-sm font-semibold text-lime-600 dark:text-lime-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <span className="text-[11px] sm:text-sm font-semibold text-lime-600 dark:text-lime-400">
+                      Hal
+                    </span>
+                  </div>
                 </div>
                 <input
                   type="range"
@@ -749,7 +762,7 @@ export function Pricing() {
                         Video Cinematic
                       </span>
                     </span>
-                    <span className="text-xs sm:text-sm text-cyan-600 dark:text-cyan-400 font-bold">+3jt</span>
+                    <span className="text-xs sm:text-sm text-cyan-600 dark:text-cyan-400 font-bold">start from 5jt</span>
                   </label>
                 </div>
               </div>
