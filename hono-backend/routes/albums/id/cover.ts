@@ -91,16 +91,19 @@ albumCoverRoute.post('/', async (c) => {
   }
 
   const coverUrl = publicAlbumAssetUrl(c, relPath)
+  // Path R2 tetap sama per album (cover.ext); tanpa penanda unik di URL publik,
+  // browser/CDN memuat bytes lama dari cache setelah ganti foto dengan URL identik.
+  const coverUrlVersioned = `${coverUrl}${coverUrl.includes('?') ? '&' : '?'}v=${Date.now()}`
 
   const r = await db
     .prepare(
       `UPDATE albums SET cover_image_url = ?, cover_image_position = ?, updated_at = datetime('now') WHERE id = ?`
     )
-    .bind(coverUrl, coverPosition, albumId)
+    .bind(coverUrlVersioned, coverPosition, albumId)
     .run()
   if (!r.success) return c.json({ error: 'Update gagal' }, 500)
 
-  return c.json({ cover_image_url: coverUrl, cover_image_position: coverPosition ?? undefined })
+  return c.json({ cover_image_url: coverUrlVersioned, cover_image_position: coverPosition ?? undefined })
 })
 
 // DELETE /api/albums/:id/cover

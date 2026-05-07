@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { getD1 } from '../../../lib/edge-env'
 import { AppEnv, requireAuthJwt } from '../../../middleware'
 import { getAuthUserFromContext } from '../../../lib/auth-user'
+import { getRole } from '../../../lib/auth'
 
 const albumsIdMyAccessAll = new Hono<AppEnv>()
 albumsIdMyAccessAll.use('*', requireAuthJwt)
@@ -21,8 +22,10 @@ albumsIdMyAccessAll.get('/', async (c) => {
       return c.json({ error: 'Album ID required' }, 400)
     }
 
-    // Jika user bukan owner/admin album, maka ketika akses & request kosong,
-    // berarti aksesnya sudah dicabut dan UI harus "terpental" (403).
+    // Cek apakah user adalah global admin — jika ya, langsung loloskan
+    const role = await getRole(c, user)
+    const isGlobalAdmin = role === 'admin'
+
     const album = await db
       .prepare(`SELECT id, user_id FROM albums WHERE id = ?`)
       .bind(albumId)
@@ -55,7 +58,9 @@ albumsIdMyAccessAll.get('/', async (c) => {
 
     const hasAnyAccess = Array.isArray(accessRows) && accessRows.length > 0
     const hasAnyRequest = Array.isArray(requestRows) && requestRows.length > 0
-    const canStillSeeAlbum = isOwner || isAlbumAdmin || isAlbumMember || hasAnyAccess || hasAnyRequest
+
+    // Global admin selalu diizinkan melihat album
+    const canStillSeeAlbum = isGlobalAdmin || isOwner || isAlbumAdmin || isAlbumMember || hasAnyAccess || hasAnyRequest
     if (!canStillSeeAlbum) {
       return c.json({ error: 'Tidak punya akses ke album ini' }, 403)
     }
@@ -72,7 +77,7 @@ albumsIdMyAccessAll.get('/', async (c) => {
       if (cid) requestsByClassMap[cid] = item
     })
 
-    return c.json({ access: accessByClass, requests: requestsByClassMap })
+    return c.json({ access: accessByClass, requests: requestsByClassMap, isGlobalAdmin })
   } catch (err: unknown) {
     console.error('Error in my-access-all:', err)
     return c.json({ error: err instanceof Error ? err.message : 'Internal Server Error' }, 500)
@@ -80,9 +85,3 @@ albumsIdMyAccessAll.get('/', async (c) => {
 })
 
 export default albumsIdMyAccessAll
-
-
-
-
-
-

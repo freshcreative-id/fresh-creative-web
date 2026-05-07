@@ -4,14 +4,13 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useSearchParams, useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import BackLink from '@/components/dashboard/BackLink'
-import { ChevronLeft, ChevronRight, BookOpen, ImagePlus, Video, Play, Users, Layout, Eye, Menu, MessageSquare, Book, Lock, Link as LinkIcon, Search, SearchX, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, BookOpen, ImagePlus, Video, Play, Users, Layout, Eye, Menu, MessageSquare, Book, Lock, Link as LinkIcon, Search, SearchX, X, Loader2 } from 'lucide-react'
 import { toast } from '@/lib/toast'
 import NotFound from '@/app/not-found'
 import YearbookClassesView from './YearbookClassesView'
 import YearbookLoader, { isValidYearbookSection } from './components/YearbookLoader'
 import { getSectionModeFromUrl, getYearbookSectionQueryUrl } from './lib/yearbook-paths'
 import CreditBadgeTop from './components/CreditBadgeTop'
-import { apiUrl } from '../../lib/api-url'
 import { fetchWithAuth } from '../../lib/api-client'
 import type { Album, ClassAccess, ClassMember, ClassRequest, Photo } from './types'
 import { asString, asObject, asStringArray, asNumberRecord, getErrorMessage } from './utils/response-narrowing'
@@ -147,6 +146,11 @@ export default function YearbookAlbumClient({
     setDeleteCoverConfirm,
   } = useYearbookCoverState()
 
+  /** video-play membutuhkan Bearer; <video src> tidak bisa kirim header — ambil via fetchWithAuth + blob URL. */
+  const [videoPlayBlobUrl, setVideoPlayBlobUrl] = useState<string | null>(null)
+  const [videoPopupLoading, setVideoPopupLoading] = useState(false)
+  const videoPlayBlobUrlRef = useRef<string | null>(null)
+
   const currentUserId = useCurrentUserId()
   const {
     teacherSearchQuery,
@@ -274,6 +278,53 @@ export default function YearbookAlbumClient({
       document.body.style.height = ''
     }
   }, [isFlipbookPreview])
+
+  // Popup video: endpoint video-play wajib Authorization Bearer — muat dengan fetchWithAuth lalu blob URL.
+  useEffect(() => {
+    if (!videoPopupUrl || !id) return
+
+    let cancelled = false
+    setVideoPopupLoading(true)
+    setVideoPopupError(null)
+    setVideoPlayBlobUrl(null)
+
+    const load = async () => {
+      try {
+        const res = await fetchWithAuth(
+          `/api/albums/${id}/video-play?url=${encodeURIComponent(videoPopupUrl)}`
+        )
+        if (!res.ok) {
+          const data = asObject(await res.json().catch(() => ({})))
+          if (!cancelled) {
+            setVideoPopupError(getErrorMessage(data, 'Video tidak dapat dimuat'))
+          }
+          return
+        }
+        const blob = await res.blob()
+        if (cancelled) return
+        const url = URL.createObjectURL(blob)
+        videoPlayBlobUrlRef.current = url
+        setVideoPlayBlobUrl(url)
+      } catch {
+        if (!cancelled) {
+          setVideoPopupError('Video tidak dapat dimuat')
+        }
+      } finally {
+        if (!cancelled) setVideoPopupLoading(false)
+      }
+    }
+
+    void load()
+
+    return () => {
+      cancelled = true
+      const u = videoPlayBlobUrlRef.current
+      videoPlayBlobUrlRef.current = null
+      if (u) URL.revokeObjectURL(u)
+      setVideoPlayBlobUrl(null)
+      setVideoPopupLoading(false)
+    }
+  }, [videoPopupUrl, id])
 
   // Simpan sidebarMode ke localStorage (untuk fallback)
   useEffect(() => {
@@ -504,9 +555,9 @@ export default function YearbookAlbumClient({
     if (classViewMode !== 'personal' || !currentClassId || !id) return
     const members = membersByClass[currentClassId] ?? []
     const access = myAccessByClass[currentClassId]
-    const canSeeMembers = isOwner || access?.status === 'approved'
+    const canSeeMembers = isOwner || isAlbumAdmin || isGlobalAdminUser || access?.status === 'approved'
     if (members.length === 0 && canSeeMembers) fetchMembersForClass(currentClassId)
-  }, [classViewMode, currentClassId, id, isOwner, fetchMembersForClass])
+  }, [classViewMode, currentClassId, id, isOwner, isAlbumAdmin, isGlobalAdminUser, fetchMembersForClass, myAccessByClass[currentClassId]])
 
   const fetchFirstPhotosForClass = useCallback(async (classId: string) => {
     if (!id) return
@@ -514,7 +565,7 @@ export default function YearbookAlbumClient({
     if (classId.startsWith('temp-')) return
     // Endpoint ini (tanpa student_name) hanya untuk owner/admin.
     // Untuk user biasa akan 403, jadi jangan spam request di mobile load.
-    if (!isOwner && !isAlbumAdmin) return
+    if (!isOwner && !isAlbumAdmin && !isGlobalAdminUser) return
     const res = await fetchWithAuth(`/api/albums/${id}/photos?class_id=${encodeURIComponent(classId)}`, { credentials: 'include', cache: 'no-store' })
     if (res.status === 403) return
     if (!res.ok) return
@@ -1369,10 +1420,11 @@ export default function YearbookAlbumClient({
     const res = await fetchWithAuth(`/api/albums/${id}/cover`, { method: 'DELETE', credentials: 'include' })
     const data = asObject(await res.json().catch(() => ({})))
     if (!res.ok) {
-      alert(getErrorMessage(data, 'Gagal menghapus cover'))
+      toast.error(getErrorMessage(data, 'Gagal menghapus cover'))
       return
     }
     setAlbum((prev) => prev ? { ...prev, cover_image_url: null, cover_image_position: null } : null)
+    toast.success('Cover berhasil dihapus')
   }
 
   const MAX_VIDEO_MB = 20
@@ -1396,11 +1448,12 @@ export default function YearbookAlbumClient({
       })
       const data = asObject(await res.json().catch(() => ({})))
       if (!res.ok) {
-        alert(getErrorMessage(data, 'Gagal upload video cover'))
+        toast.error(getErrorMessage(data, 'Gagal upload video cover'))
         return
       }
       const coverVideoUrl = asString(data.cover_video_url) ?? null
       setAlbum((prev) => prev ? { ...prev, cover_video_url: coverVideoUrl } : null)
+      toast.success('Video cover berhasil diunggah')
     } finally {
       setUploadingCoverVideo(false)
     }
@@ -1411,10 +1464,11 @@ export default function YearbookAlbumClient({
     const res = await fetchWithAuth(`/api/albums/${id}/cover-video`, { method: 'DELETE', credentials: 'include' })
     const data = asObject(await res.json().catch(() => ({})))
     if (!res.ok) {
-      alert(getErrorMessage(data, 'Gagal menghapus video cover'))
+      toast.error(getErrorMessage(data, 'Gagal menghapus video cover'))
       return
     }
     setAlbum((prev) => prev ? { ...prev, cover_video_url: null } : null)
+    toast.success('Video cover berhasil dihapus')
   }
 
   const handleDeleteCover = async () => {
@@ -1474,7 +1528,7 @@ export default function YearbookAlbumClient({
       })
       const data = asObject(await res.json().catch(() => ({})))
       if (!res.ok) {
-        alert(getErrorMessage(data, 'Gagal upload cover'))
+        toast.error(getErrorMessage(data, 'Gagal upload cover'))
         return
       }
       setAlbum((prev) =>
@@ -1488,6 +1542,7 @@ export default function YearbookAlbumClient({
       )
       if (dataUrlToRevoke) URL.revokeObjectURL(dataUrlToRevoke)
       setCoverPreview(null)
+      toast.success('Cover berhasil diperbarui')
     } finally {
       setUploadingCover(false)
     }
@@ -1651,11 +1706,24 @@ export default function YearbookAlbumClient({
                   <X className="w-3 h-3 sm:w-4 sm:h-4" /> <span>Preview</span>
                 </button>
               )}
+              {uiSection === 'classes' && activeSection !== 'cover' && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setMobileMenuOpen(true)
+                  }}
+                  className="lg:hidden flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 bg-white dark:bg-slate-800 border-2 border-black dark:border-slate-700 rounded-lg sm:rounded-xl text-slate-900 dark:text-white active:translate-x-0.5 active:translate-y-0.5 transition-all flex-shrink-0"
+                >
+                  <Menu className="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
+              )}
+
               {/* Sambutan & Classes: Search Toggle */}
               {(uiSection === 'sambutan' || (uiSection === 'classes' && activeSection !== 'cover')) && (
                 <>
                   {isSearchOpen(uiSection === 'sambutan' ? 'sambutan' : 'classes') ? (
-                    <div className={`absolute left-[52px] ${uiSection === 'classes' ? 'right-[52px]' : 'right-2'} top-2 bottom-2 bg-white dark:bg-slate-800 border-2 border-black dark:border-slate-700 rounded-xl px-3 flex items-center lg:static lg:w-auto lg:h-9 lg:px-2 lg:py-1 animate-in slide-in-from-right-2 duration-200 z-[60]`}>
+                    <div className={`absolute left-[52px] ${uiSection === 'classes' ? 'right-[52px]' : 'right-2'} top-2 bottom-2 bg-amber-50 dark:bg-slate-800 border-2 border-black dark:border-slate-700 rounded-xl px-3 flex items-center lg:static lg:w-auto lg:h-9 lg:px-2 lg:py-1 animate-in slide-in-from-right-2 duration-200 z-[60]`}>
                       <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 mr-2 flex-shrink-0" />
                       <input
                         type="text"
@@ -1675,25 +1743,12 @@ export default function YearbookAlbumClient({
                   ) : (
                     <button
                       onClick={() => openSearch(uiSection === 'sambutan' ? 'sambutan' : 'classes')}
-                      className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-white dark:bg-slate-800 border-2 border-black dark:border-slate-700 rounded-lg sm:rounded-xl text-slate-900 dark:text-white active:translate-x-0.5 active:translate-y-0.5 transition-all"
+                      className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-amber-400 dark:bg-amber-600 border-2 border-black dark:border-slate-700 rounded-lg sm:rounded-xl text-slate-900 dark:text-white active:translate-x-0.5 active:translate-y-0.5 transition-all shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5"
                     >
                       <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4" strokeWidth={3} />
                     </button>
                   )}
                 </>
-              )}
-
-              {uiSection === 'classes' && activeSection !== 'cover' && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setMobileMenuOpen(true)
-                  }}
-                  className="lg:hidden flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 bg-white dark:bg-slate-800 border-2 border-black dark:border-slate-700 rounded-lg sm:rounded-xl text-slate-900 dark:text-white active:translate-x-0.5 active:translate-y-0.5 transition-all flex-shrink-0"
-                >
-                  <Menu className="w-4 h-4 sm:w-5 sm:h-5" />
-                </button>
               )}
             </div>
 
@@ -1918,16 +1973,23 @@ export default function YearbookAlbumClient({
               <X className="w-6 h-6" strokeWidth={3} />
             </button>
             <div className="relative w-full max-w-2xl rounded-[32px] overflow-hidden" onClick={(e) => e.stopPropagation()}>
-              <div className="aspect-video bg-black rounded-[24px] overflow-hidden">
-                <video
-                  src={apiUrl(`/api/albums/${id}/video-play?url=${encodeURIComponent(videoPopupUrl)}`)}
-                  autoPlay
-                  preload="metadata"
-                  playsInline
-                  className="w-full h-full object-contain"
-                  onError={() => setVideoPopupError('Video tidak dapat dimuat')}
-                  onEnded={() => { setVideoPopupUrl(null); setVideoPopupError(null) }}
-                />
+              <div className="aspect-video bg-black rounded-[24px] overflow-hidden relative">
+                {videoPopupLoading && (
+                  <div className="absolute inset-0 z-[1] flex flex-col items-center justify-center gap-3 bg-black">
+                    <Loader2 className="h-10 w-10 animate-spin text-white" aria-hidden />
+                    <span className="text-xs font-black uppercase tracking-widest text-white/70">Memuat video…</span>
+                  </div>
+                )}
+                {videoPlayBlobUrl ? (
+                  <video
+                    src={videoPlayBlobUrl}
+                    autoPlay
+                    playsInline
+                    className="relative z-0 h-full w-full object-contain"
+                    onError={() => setVideoPopupError('Video tidak dapat dimuat')}
+                    onEnded={() => { setVideoPopupUrl(null); setVideoPopupError(null) }}
+                  />
+                ) : null}
               </div>
 
               {videoPopupError && (
@@ -1942,88 +2004,6 @@ export default function YearbookAlbumClient({
                   </button>
                 </div>
               )}
-            </div>
-          </div>
-        )}
-        {coverPreview && (
-          <div className="fixed inset-0 z-[100] bg-slate-900/80 dark:bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-4 animate-in zoom-in-95 duration-200">
-            <div className="bg-white dark:bg-slate-900 border-2 border-black dark:border-slate-700 rounded-[32px] p-4 shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] max-w-md w-full">
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest bg-amber-400 dark:bg-amber-600 px-3 py-1 border-2 border-black dark:border-slate-700 rounded-lg shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b]">PENYESUAIAN COVER</p>
-                <button
-                  onClick={() => { URL.revokeObjectURL(coverPreview.dataUrl); setCoverPreview(null) }}
-                  className="text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
-                >
-                  <X className="w-5 h-5" strokeWidth={3} />
-                </button>
-              </div>
-
-              <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-4 uppercase tracking-tight">Geser gambar agar posisi pas, lalu klik Terapkan.</p>
-
-              <div
-                ref={coverPreviewContainerRef}
-                className="w-full aspect-[3/4] rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 border-2 border-black dark:border-slate-700 relative touch-none select-none shadow-[8px_8px_0_0_#f1f5f9] dark:shadow-[1.5px_1.5px_0_0_#1e293b]"
-                onPointerDown={(e) => {
-                  if (e.button !== 0) return
-                  coverDragRef.current = {
-                    startX: e.clientX,
-                    startY: e.clientY,
-                    startPosX: coverPosition.x,
-                    startPosY: coverPosition.y,
-                  }
-                    ; (e.target as HTMLElement).setPointerCapture(e.pointerId)
-                }}
-                onPointerMove={(e) => {
-                  if (!coverDragRef.current) return
-                  const el = coverPreviewContainerRef.current
-                  if (!el) return
-                  const rect = el.getBoundingClientRect()
-                  const dx = (e.clientX - coverDragRef.current.startX) / rect.width * 100
-                  const dy = (e.clientY - coverDragRef.current.startY) / rect.height * 100
-                  setCoverPosition({
-                    x: Math.min(100, Math.max(0, coverDragRef.current.startPosX - dx)),
-                    y: Math.min(100, Math.max(0, coverDragRef.current.startPosY - dy)),
-                  })
-                }}
-                onPointerUp={(e) => {
-                  if (coverDragRef.current) {
-                    (e.target as HTMLElement).releasePointerCapture(e.pointerId)
-                    coverDragRef.current = null
-                  }
-                }}
-                onPointerCancel={(e) => {
-                  coverDragRef.current = null
-                    ; (e.target as HTMLElement).releasePointerCapture(e.pointerId)
-                }}
-              >
-                <img
-                  src={coverPreview.dataUrl}
-                  alt="Preview cover"
-                  className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-                  style={{ objectPosition: `${coverPosition.x}% ${coverPosition.y}%` }}
-                />
-              </div>
-
-              <div className="flex gap-4 mt-6">
-                <button
-                  type="button"
-                  onClick={() => {
-                    URL.revokeObjectURL(coverPreview.dataUrl)
-                    setCoverPreview(null)
-                  }}
-                  className="flex-1 px-5 py-3.5 rounded-xl border-2 border-black dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-black text-xs uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-700 active:translate-x-1 active:translate-y-1 transition-all"
-                >
-                  Batal
-                </button>
-                <button
-                  type="button"
-                  disabled={uploadingCover}
-                  onClick={() => handleUploadCover(coverPreview.file, coverPosition, coverPreview.dataUrl)}
-                  className="flex-3 px-8 py-3.5 rounded-xl bg-violet-500 text-white border-2 border-black dark:border-slate-700 font-black text-sm uppercase tracking-widest shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] hover:shadow-none hover:translate-x-1 hover:translate-y-1 active:translate-x-1.5 active:translate-y-1.5 transition-all disabled:opacity-50"
-                >
-                  {uploadingCover ? 'Mengunggah…' : 'Terapkan'}
-                </button>
-              </div>
             </div>
           </div>
         )}
@@ -2056,7 +2036,7 @@ export default function YearbookAlbumClient({
             }}
           />
         )}
-        <div className="flex shrink-0 items-center gap-3 border-b-2 border-black bg-zinc-900/85 px-3 py-2.5 backdrop-blur-md">
+        <div className="flex shrink-0 items-center gap-3 border-b-2 border-slate-900 bg-zinc-900/85 px-3 py-2.5 backdrop-blur-md">
           <button
             type="button"
             onClick={() => {
@@ -2065,16 +2045,13 @@ export default function YearbookAlbumClient({
               setPhotos([])
               setGalleryPhotosLoading(false)
             }}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-black uppercase text-white transition-colors hover:bg-white/10 tracking-widest"
           >
-            <ChevronLeft className="h-5 w-5" /> Kembali
+            <X className="h-4 w-4" /> tutup
           </button>
-          <div className="min-w-0 flex-1 text-center">
-            <p className="truncate text-sm font-bold text-white">{galleryStudent.studentName}</p>
-            <p className="truncate text-xs text-zinc-400">{galleryStudent.className}</p>
-          </div>
+          <div className="flex-1" />
           <div className="flex shrink-0 items-center gap-2">
-            <span className="tabular-nums text-xs font-semibold text-zinc-400">
+            <span className="tabular-nums text-xs font-black text-zinc-400 tracking-widest">
               {hasPhotos ? `${safeIdx + 1} / ${photos.length}` : galleryPhotosLoading ? '…' : '0'}
             </span>
           </div>
@@ -2122,16 +2099,7 @@ export default function YearbookAlbumClient({
               </>
             ) : (
               <div className="max-w-sm px-6 text-center">
-                <p className="text-sm text-zinc-400">Belum ada foto untuk siswa ini.</p>
-                {canUpload && (
-                  <button
-                    type="button"
-                    onClick={() => galleryUploadInputRef.current?.click()}
-                    className="mt-4 inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-violet-500"
-                  >
-                    <ImagePlus className="h-4 w-4" /> Upload foto
-                  </button>
-                )}
+                <p className="text-sm text-zinc-400">Belum ada foto.</p>
               </div>
             )}
           </div>

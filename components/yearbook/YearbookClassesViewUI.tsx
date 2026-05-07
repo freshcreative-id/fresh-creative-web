@@ -198,7 +198,14 @@ export default function YearbookClassesViewUI(props: any) {
   const [joinStats, setJoinStats] = useState<any>(null)
   const [savingLimit, setSavingLimit] = useState(false)
   const [approvalTab, setApprovalTab] = useState<'pending' | 'approved' | 'team'>('pending')
+  const [teacherCount, setTeacherCount] = useState<number | null>(null)
+  const [teamMemberCount, setTeamMemberCount] = useState<number | null>(null)
+  const [isCoverLandscape, setIsCoverLandscape] = useState(false)
+  const [isCoverPreviewLandscape, setIsCoverPreviewLandscape] = useState(false)
+  /** Foto batch per kelas: landscape → object-contain di kartu (sama seperti cover). */
+  const [batchClassPhotoLandscape, setBatchClassPhotoLandscape] = useState<Record<string, boolean>>({})
   const [inviteToken, setInviteToken] = useState<string | null>(null)
+  const [inviteTokenLoaded, setInviteTokenLoaded] = useState(false)
   const [inviteExpiresAt, setInviteExpiresAt] = useState<string | null>(null)
   const [generatingInvite, setGeneratingInvite] = useState(false)
   const [deleteClassConfirm, setDeleteClassConfirm] = useState<{ classId: string; className: string } | null>(null)
@@ -329,9 +336,10 @@ export default function YearbookClassesViewUI(props: any) {
   // Supabase auth-only: no Realtime. View is refreshed on demand (after actions) and when the user revisits the tab.
 
   // Fetch invite token
-  const fetchInviteToken = async () => {
+  const fetchInviteToken = useCallback(async () => {
     if (!album?.id) return
     try {
+      setInviteTokenLoaded(false)
       const res = await fetchWithAuth(`/api/albums/${album.id}/invite-token`, { credentials: 'include' })
       if (res.ok) {
         const data = asApiObject(await res.json().catch(() => ({})))
@@ -340,8 +348,10 @@ export default function YearbookClassesViewUI(props: any) {
       }
     } catch (error) {
       console.error('Error fetching invite token:', error)
+    } finally {
+      setInviteTokenLoaded(true)
     }
-  }
+  }, [album?.id])
 
   // Generate new invite token
   const handleGenerateInviteToken = async () => {
@@ -405,7 +415,7 @@ export default function YearbookClassesViewUI(props: any) {
     if (!album?.id || !canManage) return
     void fetchJoinStats()
     void fetchInviteToken()
-  }, [album?.id, canManage])
+  }, [album?.id, canManage, fetchInviteToken, fetchJoinStats])
 
   // Prefetch semua tab approval saat masuk section "approval"
   // Agar jumlah & isi tab langsung muncul dan switching tab terasa instan.
@@ -462,6 +472,7 @@ export default function YearbookClassesViewUI(props: any) {
       void fetchJoinStats()
       void fetchTeachers()
       void fetchManualPages()
+      void fetchInviteToken()
 
       if (canManage) {
         void fetchJoinRequests('pending')
@@ -472,7 +483,7 @@ export default function YearbookClassesViewUI(props: any) {
 
     window.addEventListener('fresh:realtime', onRealtime)
     return () => window.removeEventListener('fresh:realtime', onRealtime)
-  }, [album?.id, canManage, fetchJoinStats, fetchTeachers, fetchManualPages, fetchJoinRequests, fetchMembers])
+  }, [album?.id, canManage, fetchJoinStats, fetchTeachers, fetchManualPages, fetchJoinRequests, fetchMembers, fetchInviteToken])
 
   // Reset loaded flags when leaving approval section so next time we fetch fresh
   useEffect(() => {
@@ -783,7 +794,7 @@ export default function YearbookClassesViewUI(props: any) {
       const data = asApiObject(await res.json().catch(() => ({})))
 
       if (res.ok && typeof data.batch_photo_url === 'string') {
-        toast.success('Foto angkatan berhasil diupload')
+        toast.success('Foto kelas berhasil diupload')
         // Optimistic update via parent — also triggers realtime for other devices
         if (handleUpdateClass) {
           await handleUpdateClass(classId, { batch_photo_url: data.batch_photo_url as string })
@@ -822,7 +833,7 @@ export default function YearbookClassesViewUI(props: any) {
       const data = asApiObject(await res.json().catch(() => ({})))
 
       if (res.ok && typeof data.batch_video_url === 'string') {
-        toast.success('Video angkatan berhasil diupload')
+        toast.success('Video kelas berhasil diupload')
         // Optimistic update via parent
         if (handleUpdateClass) {
           await handleUpdateClass(classId, { batch_video_url: data.batch_video_url as string })
@@ -847,7 +858,7 @@ export default function YearbookClassesViewUI(props: any) {
         method: 'DELETE',
       })
       if (res.ok) {
-        toast.success('Video angkatan dihapus')
+        toast.success('Video kelas dihapus')
         if (handleUpdateClass) {
           handleUpdateClass(classId, { batch_video_url: '' })
         }
@@ -874,7 +885,7 @@ export default function YearbookClassesViewUI(props: any) {
       })
 
       if (res.ok) {
-        toast.success('Foto angkatan dihapus')
+        toast.success('Foto kelas dihapus')
         // Confirm the null state (optimistic already applied)
         if (handleUpdateClass) {
           handleUpdateClass(classId, { batch_photo_url: '' })
@@ -1226,8 +1237,16 @@ export default function YearbookClassesViewUI(props: any) {
                                 return u.includes('/api/files/') ? u.replace(/^https?:\/\/[^/]+/i, '') : u
                               })()}
                               alt={album.name}
-                              className="w-full h-full object-cover"
+                              className={`w-full h-full ${isCoverLandscape ? 'object-contain' : 'object-cover'}`}
                               style={album.cover_image_position ? { objectPosition: `${album.cover_image_position}` } : undefined}
+                              onLoad={(e) => {
+                                const img = e.currentTarget
+                                if (img.naturalWidth > img.naturalHeight) {
+                                  setIsCoverLandscape(true)
+                                } else {
+                                  setIsCoverLandscape(false)
+                                }
+                              }}
                             />
                           ) : (
                             <div className="flex flex-col items-center justify-center w-full h-full bg-slate-50 dark:bg-slate-800 gap-4">
@@ -1250,7 +1269,7 @@ export default function YearbookClassesViewUI(props: any) {
                           )}
 
                           {/* Controls Overlay */}
-                          {isOwner && (
+                          {canManage && (
                             <div className="absolute inset-0 bg-slate-900/10 dark:bg-slate-950/30 lg:opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-between p-3 lg:p-4">
                               {/* Top controls: Image */}
                               <div className="flex justify-end items-start gap-2">
@@ -1391,18 +1410,17 @@ export default function YearbookClassesViewUI(props: any) {
                         ref={coverUploadInputRef}
                         type="file"
                         accept="image/*"
-                        onChange={(e) => {
+                        onChange={async (e) => {
                           const file = e.target.files?.[0]
-                          if (file && setCoverPreview) {
+                          if (file && handleUploadCover) {
                             const MAX_PHOTO_BYTES = 10 * 1024 * 1024
                             if (file.size > MAX_PHOTO_BYTES) {
                               toast.error('Foto maksimal 10MB')
                               e.target.value = ''
                               return
                             }
-                            const dataUrl = URL.createObjectURL(file)
-                            setCoverPreview({ file, dataUrl })
-                            setCoverPosition && setCoverPosition({ x: 50, y: 50 })
+                            // Direct upload without positioning popup
+                            await handleUploadCover(file, { x: 50, y: 50 })
                           }
                           e.target.value = ''
                         }}
@@ -1425,79 +1443,6 @@ export default function YearbookClassesViewUI(props: any) {
                       />
                     </div>
 
-                    {/* Cover Preview Modal */}
-                    {coverPreview && (
-                      <div className="fixed inset-0 z-[100] bg-slate-900/90 dark:bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-4">
-                        <div className="flex flex-col items-center gap-6 w-full max-w-lg">
-                          <div className="text-center space-y-2">
-                            <h3 className="text-xl font-black text-white uppercase tracking-tight">Atur Posisi Cover</h3>
-                            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Geser gambar untuk menyesuaikan tampilan</p>
-                          </div>
-
-                          <div
-                            ref={coverPreviewContainerRef}
-                            className="w-full aspect-[3/4] bg-white dark:bg-slate-900 border-2 border-black dark:border-slate-700 rounded-[40px] overflow-hidden shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] relative touch-none select-none cursor-move group"
-                            onPointerDown={(e) => {
-                              if (e.button !== 0) return
-                              coverDragRef.current = {
-                                startX: e.clientX,
-                                startY: e.clientY,
-                                startPosX: coverPosition.x,
-                                startPosY: coverPosition.y,
-                              };
-                              (e.target as HTMLElement).setPointerCapture(e.pointerId)
-                            }}
-                            onPointerMove={(e) => {
-                              if (!coverDragRef.current || !setCoverPosition) return
-                              const el = coverPreviewContainerRef.current
-                              if (!el) return
-                              const rect = el.getBoundingClientRect()
-                              const dx = (e.clientX - coverDragRef.current.startX) / rect.width * 100
-                              const dy = (e.clientY - coverDragRef.current.startY) / rect.height * 100
-                              setCoverPosition({
-                                x: Math.min(100, Math.max(0, coverDragRef.current.startPosX - dx)),
-                                y: Math.min(100, Math.max(0, coverDragRef.current.startPosY - dy)),
-                              })
-                            }}
-                            onPointerUp={(e) => {
-                              if (coverDragRef.current) {
-                                (e.target as HTMLElement).releasePointerCapture(e.pointerId)
-                                coverDragRef.current = null
-                              }
-                            }}
-                          >
-                            <img
-                              src={coverPreview.dataUrl}
-                              alt="Preview cover"
-                              className="absolute inset-0 w-full h-full object-cover pointer-events-none transition-transform duration-75"
-                              style={{ objectPosition: `${coverPosition.x}% ${coverPosition.y}%` }}
-                            />
-                            <div className="absolute inset-0 border-[16px] border-black/10 pointer-events-none" />
-                          </div>
-
-                          <div className="flex gap-4 w-full">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (coverPreview?.dataUrl) URL.revokeObjectURL(coverPreview.dataUrl)
-                                setCoverPreview && setCoverPreview(null)
-                              }}
-                              className="flex-1 py-4 rounded-2xl bg-slate-800 dark:bg-slate-700 text-slate-400 dark:text-slate-300 font-black text-xs uppercase tracking-widest border border-slate-700 dark:border-slate-700 hover:bg-slate-700 dark:hover:bg-slate-600 transition-all"
-                            >
-                              Batal
-                            </button>
-                            <button
-                              type="button"
-                              disabled={uploadingCover}
-                              onClick={() => handleUploadCover && handleUploadCover(coverPreview.file, coverPosition, coverPreview.dataUrl)}
-                              className="flex-[2] py-4 rounded-2xl bg-emerald-400 dark:bg-emerald-600 border-2 border-black dark:border-slate-700 text-slate-900 dark:text-white font-black text-xs uppercase tracking-widest shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all disabled:opacity-50"
-                            >
-                              {uploadingCover ? 'Mengunggah...' : 'Simpan & Terapkan'}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
@@ -1526,6 +1471,7 @@ export default function YearbookClassesViewUI(props: any) {
                   classes={classes}
                   inviteToken={inviteToken}
                   inviteExpiresAt={inviteExpiresAt}
+                  inviteTokenLoaded={inviteTokenLoaded}
                   generatingInvite={generatingInvite}
                   onGenerateInvite={handleGenerateInviteToken}
                   savingLimit={savingLimit}
@@ -1752,13 +1698,14 @@ export default function YearbookClassesViewUI(props: any) {
                               <div className="flex items-center justify-between mb-6 gap-3">
                                 <div className="flex items-center gap-3">
                                   <div className="w-2 h-8 bg-indigo-500 dark:bg-indigo-600 rounded-full border-2 border-black dark:border-slate-700 shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b]"></div>
-                                  <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-[0.2em]">Foto &amp; Video Angkatan</h3>
+                                  <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-[0.2em]">Foto &amp; Video Kelas</h3>
                                 </div>
                               </div>
                               <div className="relative">
                                 {(() => {
                                   const hasPhoto = !!currentClass.batch_photo_url
                                   const hasVideo = !!currentClass.batch_video_url
+                                  const isBatchPhotoLandscape = batchClassPhotoLandscape[currentClass.id] ?? false
                                   // "Layar penuh" hanya untuk foto (request: jangan buka video kalau foto belum ada)
                                   const canOpenPhotoViewer = hasPhoto
 
@@ -1784,8 +1731,15 @@ export default function YearbookClassesViewUI(props: any) {
                                       {hasPhoto ? (
                                         <img
                                           src={currentClass.batch_photo_url!}
-                                          alt={`Foto Angkatan ${currentClass.name}`}
-                                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                                          alt={`Foto kelas ${currentClass.name}`}
+                                          className={`w-full h-full transition-transform duration-700 group-hover:scale-105 ${isBatchPhotoLandscape ? 'object-contain' : 'object-cover'}`}
+                                          onLoad={(e) => {
+                                            const img = e.currentTarget
+                                            setBatchClassPhotoLandscape((prev) => ({
+                                              ...prev,
+                                              [currentClass.id]: img.naturalWidth > img.naturalHeight,
+                                            }))
+                                          }}
                                         />
                                       ) : (
                                         <div className="w-full h-full flex flex-col items-center justify-center px-10 text-center">
@@ -1796,11 +1750,11 @@ export default function YearbookClassesViewUI(props: any) {
                                             </div>
                                           </div>
                                           <span className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight leading-tight">
-                                            {canManage ? 'Upload Foto Angkatan' : 'Media Angkatan Belum Tersedia'}
+                                            {canManage ? 'Upload Foto Kelas' : 'Media Kelas Belum Tersedia'}
                                           </span>
                                           {!canManage && (
                                             <p className="text-[10px] font-black text-slate-400 dark:text-slate-600 mt-4 uppercase tracking-widest leading-relaxed">
-                                              Admin akan mengunggah foto/video angkatan segera
+                                              Admin akan mengunggah foto &amp; video kelas segera
                                             </p>
                                           )}
                                           {!canManage && hasVideo && (
@@ -1821,7 +1775,7 @@ export default function YearbookClassesViewUI(props: any) {
                                             setViewingBatchPhotoClass(currentClass)
                                           }}
                                           className="absolute bottom-6 left-6 w-14 h-14 flex items-center justify-center bg-emerald-400 text-slate-900 rounded-2xl border-2 border-black dark:border-slate-700 shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] hover:bg-emerald-300 active:shadow-none active:translate-x-0.5 active:translate-y-0.5 transition-all"
-                                          title="Putar Video Angkatan"
+                                          title="Putar Video Kelas"
                                         >
                                           <Play className="w-6 h-6 fill-current" strokeWidth={3} />
                                         </button>
@@ -1842,7 +1796,7 @@ export default function YearbookClassesViewUI(props: any) {
                                                 })
                                               }}
                                               className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border-2 border-black dark:border-slate-700 font-black text-xs uppercase tracking-widest shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] transition-all bg-red-500 text-white hover:bg-red-600 active:shadow-none active:translate-x-0.5 active:translate-y-0.5"
-                                              title="Hapus Foto Angkatan"
+                                              title="Hapus Foto Kelas"
                                             >
                                               <Trash2 className="w-4 h-4" strokeWidth={3} />
                                               <span>Hapus Foto</span>
@@ -1855,7 +1809,7 @@ export default function YearbookClassesViewUI(props: any) {
                                                 batchPhotoInputRef.current?.click()
                                               }}
                                               className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border-2 border-black dark:border-slate-700 font-black text-xs uppercase tracking-widest shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] transition-all bg-indigo-500 text-white hover:bg-indigo-600 active:shadow-none active:translate-x-0.5 active:translate-y-0.5"
-                                              title="Upload Foto Angkatan"
+                                              title="Upload Foto Kelas"
                                             >
                                               <span>Upload Foto</span>
                                             </button>
@@ -1872,7 +1826,7 @@ export default function YearbookClassesViewUI(props: any) {
                                                 })
                                               }}
                                               className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border-2 border-black dark:border-slate-700 font-black text-xs uppercase tracking-widest shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] transition-all bg-slate-900 text-white hover:bg-black active:shadow-none active:translate-x-0.5 active:translate-y-0.5"
-                                              title="Hapus Video Angkatan"
+                                              title="Hapus Video Kelas"
                                             >
                                               <Trash2 className="w-4 h-4" strokeWidth={3} />
                                               <span>Hapus Video</span>
@@ -1885,7 +1839,7 @@ export default function YearbookClassesViewUI(props: any) {
                                                 batchVideoInputRef.current?.click()
                                               }}
                                               className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border-2 border-black dark:border-slate-700 font-black text-xs uppercase tracking-widest shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] transition-all bg-blue-500 text-white hover:bg-blue-600 active:shadow-none active:translate-x-0.5 active:translate-y-0.5"
-                                              title="Upload Video Angkatan"
+                                              title="Upload Video Kelas"
                                             >
                                               <span>Upload Video</span>
                                             </button>
@@ -1958,11 +1912,12 @@ export default function YearbookClassesViewUI(props: any) {
                                           <span>Edit</span>
                                         </button>
                                       )}
-                                      {isGlobalAdmin && (
+                                      {(isGlobalAdmin || (m.is_me && isOwner)) && (
                                         <button
                                           type="button"
                                           onClick={() => setDeleteMemberConfirm({ classId: currentClass.id, userId: m.is_me ? undefined : m.user_id, memberName: m.student_name })}
                                           className="w-12 h-12 flex items-center justify-center rounded-xl bg-red-100 dark:bg-red-950/50 text-red-600 dark:text-red-400 border border-red-600 dark:border-red-700 hover:bg-red-600 hover:text-white transition-all shadow-[2px_2px_0_0_#dc2626] dark:shadow-[1.5px_1.5px_0_0_#1e293b] active:shadow-none active:translate-x-0.5 active:translate-y-0.5"
+                                          title={m.is_me ? 'Keluar dari kelas ini' : 'Hapus anggota'}
                                         >
                                           <Trash2 className="w-5 h-5" strokeWidth={2.5} />
                                         </button>
@@ -1980,6 +1935,7 @@ export default function YearbookClassesViewUI(props: any) {
                                       firstPhoto={m.photos?.[0] || firstPhotoByStudent?.[m.student_name]}
                                       classId={currentClass.id}
                                       canManage={canManage}
+                                      isOwner={isOwner}
                                       isGlobalAdmin={isGlobalAdmin}
                                       hasApprovedAccess={hasApprovedAccess}
                                       isFlipped={editingMemberUserId === m.user_id}
@@ -2159,10 +2115,10 @@ export default function YearbookClassesViewUI(props: any) {
                   <div className="fixed inset-0 bg-slate-900/40 dark:bg-black/50 backdrop-blur-md flex items-center justify-center z-[200] p-4">
                     <div className="bg-white dark:bg-slate-900 border-2 border-black dark:border-slate-700 rounded-[32px] p-6 lg:p-8 max-w-sm w-full shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] text-center">
                       <h3 className="text-xl lg:text-2xl font-black text-slate-900 dark:text-white mb-2 uppercase tracking-tight">
-                        {deleteBatchMediaConfirm.type === 'photo' ? 'Hapus Foto Angkatan' : 'Hapus Video Angkatan'}
+                        {deleteBatchMediaConfirm.type === 'photo' ? 'Hapus Foto Kelas' : 'Hapus Video Kelas'}
                       </h3>
                       <p className="text-sm font-bold text-slate-500 dark:text-slate-400 mb-8 lowercase first-letter:uppercase">
-                        Yakin ingin menghapus {deleteBatchMediaConfirm.type === 'photo' ? 'foto' : 'video'} angkatan untuk kelas "{deleteBatchMediaConfirm.className}"?
+                        Yakin ingin menghapus {deleteBatchMediaConfirm.type === 'photo' ? 'foto' : 'video'} kelas pada kelas &ldquo;{deleteBatchMediaConfirm.className}&rdquo;?
                       </p>
                       <div className="flex gap-3">
                         <button
@@ -2213,46 +2169,46 @@ export default function YearbookClassesViewUI(props: any) {
               {/* Batch Media Viewer */}
               {
                 viewingBatchPhotoClass && (viewingBatchPhotoClass.batch_photo_url || viewingBatchPhotoClass.batch_video_url) && (
-                  <div className="fixed inset-0 z-[200] bg-slate-900/95 dark:bg-black/95 backdrop-blur-md flex flex-col animate-in fade-in duration-300 p-4 lg:p-10">
-                    <div className="flex items-center justify-between mb-6 lg:mb-10 w-full max-w-6xl mx-auto">
-                      <div className="bg-amber-300 dark:bg-amber-600 border-2 border-black dark:border-slate-700 px-6 py-3 rounded-2xl shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b]">
-                        <h3 className="text-slate-900 dark:text-white font-black text-sm lg:text-xl uppercase tracking-widest">Media Angkatan — {viewingBatchPhotoClass.name}</h3>
+                  <div className="fixed inset-0 z-[200] bg-slate-900/95 dark:bg-black/95 backdrop-blur-md flex flex-col animate-in fade-in duration-300 p-3 sm:p-4 lg:p-6">
+                    <div className="flex items-center justify-between gap-3 mb-3 sm:mb-4 lg:mb-5 w-full max-w-2xl mx-auto">
+                      <div className="bg-amber-300 dark:bg-amber-600 border-2 border-black dark:border-slate-700 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl sm:rounded-2xl shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] min-w-0">
+                        <h3 className="text-slate-900 dark:text-white font-black text-[10px] sm:text-xs uppercase tracking-widest truncate max-w-[70vw] sm:max-w-none">Media Kelas — {viewingBatchPhotoClass.name}</h3>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 shrink-0">
                         <button
                           onClick={() => { setViewingBatchMediaMode('photo'); setViewingBatchPhotoClass(null) }}
-                          className="w-12 h-12 flex items-center justify-center bg-white dark:bg-slate-800 rounded-2xl border-2 border-black dark:border-slate-700 text-slate-900 dark:text-white shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all"
+                          className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center bg-white dark:bg-slate-800 rounded-xl sm:rounded-2xl border-2 border-black dark:border-slate-700 text-slate-900 dark:text-white shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all"
                         >
-                          <X className="w-7 h-7" strokeWidth={4} />
+                          <X className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={4} />
                         </button>
                       </div>
                     </div>
-                    <div className="flex-1 flex items-center justify-center overflow-hidden w-full max-w-7xl mx-auto">
-                      <div className="relative p-2 bg-white dark:bg-slate-900 border-2 border-black dark:border-slate-700 rounded-[32px] shadow-[20px_20px_0_0_rgba(0,0,0,0.3)] dark:shadow-[1.5px_1.5px_0_0_#1e293b] max-h-full">
+                    <div className="flex-1 flex items-center justify-center overflow-hidden w-full max-w-3xl mx-auto px-1">
+                      <div className="relative p-1.5 sm:p-2 bg-white dark:bg-slate-900 border-2 border-black dark:border-slate-700 rounded-[24px] sm:rounded-[28px] shadow-[12px_12px_0_0_rgba(0,0,0,0.25)] dark:shadow-[1.5px_1.5px_0_0_#1e293b] max-h-full max-w-full">
                         {viewingBatchMediaMode === 'video' && viewingBatchPhotoClass.batch_video_url ? (
                           <video
                             src={viewingBatchPhotoClass.batch_video_url || ''}
-                            className="max-w-full max-h-[70vh] object-contain rounded-[24px]"
+                            className="max-w-full w-full max-h-[min(52vh,520px)] object-contain rounded-[18px] sm:rounded-[22px]"
                             controls
                             autoPlay
                           />
                         ) : viewingBatchPhotoClass.batch_photo_url ? (
                           <img
                             src={viewingBatchPhotoClass.batch_photo_url || ''}
-                            alt={`Foto Angkatan ${viewingBatchPhotoClass.name}`}
-                            className="max-w-full max-h-[70vh] object-contain rounded-[24px]"
+                            alt={`Foto kelas ${viewingBatchPhotoClass.name}`}
+                            className="max-w-full w-full max-h-[min(52vh,520px)] object-contain rounded-[18px] sm:rounded-[22px]"
                           />
                         ) : (
                           <video
                             src={viewingBatchPhotoClass.batch_video_url || ''}
-                            className="max-w-full max-h-[70vh] object-contain rounded-[24px]"
+                            className="max-w-full w-full max-h-[min(52vh,520px)] object-contain rounded-[18px] sm:rounded-[22px]"
                             controls
                             autoPlay
                           />
                         )}
                       </div>
                     </div>
-                    <div className="mt-8 text-center">
+                    <div className="mt-4 sm:mt-6 text-center">
                       <p className="text-white/60 text-[10px] font-black uppercase tracking-[0.3em]">Fresh Creative Yearbook Digital System</p>
                     </div>
                   </div>

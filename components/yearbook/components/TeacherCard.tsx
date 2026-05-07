@@ -55,12 +55,15 @@ export default function TeacherCard({
   onClickPhoto,
   savingTeacher
 }: TeacherCardProps) {
+  const [showPhotoViewer, setShowPhotoViewer] = useState(false)
+  const [photoIndex, setPhotoIndex] = useState(0)
   // Edit form state
   const [editName, setEditName] = useState(teacher.name || '')
   const [editTitle, setEditTitle] = useState(teacher.title || '')
   const [editMessage, setEditMessage] = useState(teacher.message || '')
   const [editVideoUrl, setEditVideoUrl] = useState(teacher.video_url || '')
   const [localConfirm, setLocalConfirm] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null)
+  const [isLandscape, setIsLandscape] = useState(false)
 
   // Pending (staged) files - not uploaded until Save
   const [pendingPhotos, setPendingPhotos] = useState<{ file: File; previewUrl: string }[]>([])
@@ -230,16 +233,28 @@ export default function TeacherCard({
                 <FastImage
                   src={teacher.photos && teacher.photos.length > 0 ? teacher.photos[0].file_url : teacher.photo_url}
                   alt={teacher.name}
-                  className="w-full h-full object-cover cursor-pointer transition-transform duration-700"
+                  className={`w-full h-full cursor-pointer transition-transform duration-700 ${isLandscape ? 'object-contain' : 'object-cover'}`}
                   priority
+                  onLoad={(e) => {
+                    const img = e.currentTarget
+                    if (img.naturalWidth > img.naturalHeight) {
+                      setIsLandscape(true)
+                    } else {
+                      setIsLandscape(false)
+                    }
+                  }}
                   onClick={() => {
-                    onClickPhoto && onClickPhoto(teacher, 0)
+                    const hasPhotos = (teacher.photos && teacher.photos.length > 0) || teacher.photo_url
+                    if (hasPhotos) {
+                      setPhotoIndex(0)
+                      setShowPhotoViewer(true)
+                      if (onClickPhoto) onClickPhoto(teacher, 0)
+                    }
                   }}
                 />
               ) : (
                 <div
-                  className="w-full h-full flex flex-col items-center justify-center text-slate-300 dark:text-slate-500 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                  onClick={() => onClickPhoto && onClickPhoto(teacher, 0)}
+                  className="w-full h-full flex flex-col items-center justify-center text-slate-300 dark:text-slate-500"
                 >
                   <ImagePlus className="w-10 h-10 mb-2 opacity-40" />
                   <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Belum ada foto</span>
@@ -375,7 +390,9 @@ export default function TeacherCard({
                           alt={`${teacher.name} ${idx + 1}`}
                           className="w-full h-full object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
                           onClick={() => {
-                            if (!photo.isPending) onClickPhoto && onClickPhoto(teacher, idx)
+                            setPhotoIndex(idx)
+                            setShowPhotoViewer(true)
+                            if (!photo.isPending && onClickPhoto) onClickPhoto(teacher, idx)
                           }}
                         />
                         <button
@@ -481,6 +498,90 @@ export default function TeacherCard({
           </div>
         </div>
       </div>
+
+      {/* Photo Viewer Popup */}
+      {showPhotoViewer && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[200] flex flex-col bg-zinc-950 animate-in fade-in duration-200">
+          <div className="flex shrink-0 items-center gap-3 border-b-2 border-slate-900 bg-zinc-900/85 px-3 py-2.5 backdrop-blur-md">
+            <button
+              type="button"
+              onClick={() => setShowPhotoViewer(false)}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-black uppercase text-white transition-colors hover:bg-white/10 tracking-widest"
+            >
+              <X className="h-4 w-4" /> tutup
+            </button>
+            <div className="flex-1" />
+            <div className="flex shrink-0 items-center gap-2">
+              <span className="tabular-nums text-xs font-black text-zinc-400 tracking-widest">
+                {allDisplayPhotos.length > 0 ? `${photoIndex + 1} / ${allDisplayPhotos.length}` : '0'}
+              </span>
+            </div>
+          </div>
+
+          <div className="relative flex min-h-0 flex-1 flex-col">
+            <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden px-2 py-3 md:px-6">
+              {allDisplayPhotos.length > 0 ? (
+                <>
+                  {allDisplayPhotos.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setPhotoIndex(i => Math.max(0, i - 1))}
+                      disabled={photoIndex === 0}
+                      className="absolute left-1 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/55 p-2.5 text-white shadow-lg backdrop-blur-sm transition-opacity disabled:opacity-25 md:left-4"
+                    >
+                      <ChevronLeft className="h-7 w-7 md:h-8 md:w-8" />
+                    </button>
+                  )}
+                  <div className="flex max-h-[min(78vh,calc(100dvh-9rem))] w-full max-w-5xl items-center justify-center">
+                    <div className="relative max-h-full max-w-full overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/10">
+                      <FastImage
+                        src={allDisplayPhotos[photoIndex].file_url}
+                        alt=""
+                        className="max-h-[min(78vh,calc(100dvh-9rem))] w-auto max-w-full object-contain"
+                        priority
+                      />
+                    </div>
+                  </div>
+                  {allDisplayPhotos.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setPhotoIndex(i => Math.min(allDisplayPhotos.length - 1, i + 1))}
+                      disabled={photoIndex >= allDisplayPhotos.length - 1}
+                      className="absolute right-1 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/55 p-2.5 text-white shadow-lg backdrop-blur-sm transition-opacity disabled:opacity-25 md:right-4"
+                    >
+                      <ChevronRight className="h-7 w-7 md:h-8 md:w-8" />
+                    </button>
+                  )}
+                </>
+              ) : (
+                <div className="max-w-sm px-6 text-center">
+                  <p className="text-sm text-zinc-400">Belum ada foto.</p>
+                </div>
+              )}
+            </div>
+
+            {allDisplayPhotos.length > 1 && (
+              <div className="shrink-0 border-t-2 border-slate-900 bg-black/50 px-3 py-3 backdrop-blur-md">
+                <div className="mx-auto flex max-w-5xl gap-2 overflow-x-auto pb-1 no-scrollbar">
+                  {allDisplayPhotos.map((p, i) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => setPhotoIndex(i)}
+                      className={`relative h-14 w-14 shrink-0 overflow-hidden rounded-xl ring-2 transition-all md:h-16 md:w-16 ${
+                        i === photoIndex ? 'ring-indigo-400 opacity-100' : 'ring-white/15 opacity-60 hover:opacity-100'
+                      }`}
+                    >
+                      <FastImage src={p.file_url} alt="" className="h-full w-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>,
+        document.body
+      )}
     </>
   )
 }

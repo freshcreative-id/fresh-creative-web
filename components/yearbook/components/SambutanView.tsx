@@ -42,113 +42,9 @@ export default function SambutanView({
   const [addingTeacher, setAddingTeacher] = useState(false)
   const [newTeacherName, setNewTeacherName] = useState('')
   const [editingTeacherId, setEditingTeacherId] = useState<string | null>(null)
-  const [teacherPhotoViewer, setTeacherPhotoViewer] = useState<{ teacher: Teacher; photoIndex: number } | null>(null)
 
   const teachersSorted = useMemo(() => sortTeachersByName(teachers), [teachers])
 
-  // Teacher Photo Viewer — satu layer, gaya sama dengan galeri siswa (dark + thumbnail strip)
-  if (teacherPhotoViewer) {
-    const { teacher, photoIndex } = teacherPhotoViewer
-    const galleryPhotos =
-      teacher.photos && teacher.photos.length > 0
-        ? teacher.photos
-        : teacher.photo_url
-          ? [{ id: 'legacy-photo', file_url: teacher.photo_url, sort_order: 0 }]
-          : []
-    const safeIdx = galleryPhotos.length > 0 ? Math.min(photoIndex, galleryPhotos.length - 1) : 0
-    const currentPhoto = galleryPhotos[safeIdx]
-    return (
-      <div className="fixed inset-0 z-[100] flex flex-col bg-zinc-950 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
-        <div className="flex shrink-0 items-center gap-3 border-b-2 border-slate-900 bg-zinc-900/85 px-3 py-2.5 backdrop-blur-md">
-          <button
-            type="button"
-            onClick={() => setTeacherPhotoViewer(null)}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/10"
-          >
-            <X className="h-5 w-5" /> Tutup
-          </button>
-          <div className="min-w-0 flex-1 text-center">
-            <p className="truncate text-sm font-bold text-white">{teacher.name}</p>
-            {teacher.title && <p className="truncate text-xs text-zinc-400">{teacher.title}</p>}
-          </div>
-          <span className="shrink-0 tabular-nums text-xs font-semibold text-zinc-400">
-            {galleryPhotos.length > 0 ? `${safeIdx + 1} / ${galleryPhotos.length}` : '0'}
-          </span>
-        </div>
-        <div className="relative flex min-h-0 flex-1 flex-col">
-          <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden px-2 py-3 md:px-6">
-            {galleryPhotos.length > 0 ? (
-              <>
-                {galleryPhotos.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => setTeacherPhotoViewer({ teacher, photoIndex: Math.max(0, photoIndex - 1) })}
-                    disabled={safeIdx === 0}
-                    className="absolute left-1 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/55 p-2.5 text-white shadow-lg backdrop-blur-sm transition-opacity disabled:opacity-25 md:left-4"
-                    aria-label="Foto sebelumnya"
-                  >
-                    <ChevronLeft className="h-7 w-7 md:h-8 md:w-8" />
-                  </button>
-                )}
-                <div className="flex max-h-[min(78vh,calc(100dvh-9rem))] w-full max-w-5xl items-center justify-center">
-                  <button
-                    type="button"
-                    onClick={() => setTeacherPhotoViewer(null)}
-                    className="relative max-h-full max-w-full overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/10"
-                  >
-                    <FastImage
-                      src={currentPhoto?.file_url}
-                      alt={teacher.name}
-                      className="max-h-[min(78vh,calc(100dvh-9rem))] w-auto max-w-full object-contain"
-                      priority
-                      fetchPriority="high"
-                      decoding="async"
-                    />
-                  </button>
-                </div>
-                {galleryPhotos.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setTeacherPhotoViewer({
-                        teacher,
-                        photoIndex: Math.min(galleryPhotos.length - 1, photoIndex + 1),
-                      })
-                    }
-                    disabled={safeIdx >= galleryPhotos.length - 1}
-                    className="absolute right-1 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/55 p-2.5 text-white shadow-lg backdrop-blur-sm transition-opacity disabled:opacity-25 md:right-4"
-                    aria-label="Foto berikutnya"
-                  >
-                    <ChevronRight className="h-7 w-7 md:h-8 md:w-8" />
-                  </button>
-                )}
-              </>
-            ) : (
-              <p className="text-sm text-zinc-500">Belum ada foto.</p>
-            )}
-          </div>
-          {galleryPhotos.length > 1 && (
-            <div className="shrink-0 border-t-2 border-slate-900 bg-black/50 px-3 py-3 backdrop-blur-md">
-              <div className="mx-auto flex max-w-5xl gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]">
-                {galleryPhotos.map((p, i) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => setTeacherPhotoViewer({ teacher, photoIndex: i })}
-                    className={`relative h-14 w-14 shrink-0 overflow-hidden rounded-xl ring-2 transition-all md:h-16 md:w-16 ${
-                      i === safeIdx ? 'ring-violet-400 opacity-100' : 'ring-white/15 opacity-60 hover:opacity-100'
-                    }`}
-                  >
-                    <FastImage src={p.file_url} alt="" className="h-full w-full object-cover" loading={i === safeIdx ? 'eager' : 'lazy'} />
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="w-full max-w-7xl mx-auto px-3 pt-0 pb-4 sm:px-4 sm:py-4 lg:px-6">
@@ -270,7 +166,6 @@ export default function SambutanView({
               onDelete={(teacherId) => onDeleteTeacher(teacherId, teacher.name)}
               onDeletePhoto={onDeletePhoto}
               onPlayVideo={(videoUrl) => onPlayVideo?.(videoUrl)}
-              onClickPhoto={(_, photoIndex) => setTeacherPhotoViewer({ teacher, photoIndex })}
               savingTeacher={false}
             />
           ))}

@@ -6,9 +6,13 @@ type FastImageProps = React.ImgHTMLAttributes<HTMLImageElement> & {
   priority?: boolean
 }
 
-export default function FastImage({ priority = false, loading, fetchPriority, decoding, ...props }: FastImageProps) {
+const FastImage = React.forwardRef<HTMLImageElement, FastImageProps>(function FastImage(
+  { priority = false, loading, fetchPriority, decoding, ...props },
+  ref,
+) {
   return (
     <img
+      ref={ref}
       {...props}
       alt={props.alt ?? ''}
       loading={loading ?? (priority ? 'eager' : 'lazy')}
@@ -16,7 +20,9 @@ export default function FastImage({ priority = false, loading, fetchPriority, de
       decoding={decoding ?? 'async'}
     />
   )
-}
+})
+
+export default FastImage
 
 
 

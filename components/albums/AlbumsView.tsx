@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Check, X, Trash2, UserPlus, User, Loader2, ImagePlus, BookOpen, ChevronRight, Search, Edit, LayoutDashboard, MoreVertical, Calendar, ShieldCheck, CreditCard, Package, Plus, Eye, ClipboardPaste, LayoutGrid } from 'lucide-react'
+import { Check, X, Trash2, UserPlus, User, Loader2, ImagePlus, BookOpen, ChevronRight, Search, Edit, LayoutDashboard, MoreVertical, Calendar, ShieldCheck, CreditCard, Package, Eye, ClipboardPaste, LayoutGrid } from 'lucide-react'
 import { getYearbookSectionQueryUrl } from '../yearbook/lib/yearbook-paths'
 import { apiUrl } from '../../lib/api-url'
 import { fetchWithAuth } from '../../lib/api-client'
@@ -399,7 +399,6 @@ export default function AlbumsView({ variant, initialData, fetchUrl = '/api/albu
   const [inviteLinkInput, setInviteLinkInput] = useState('')
   const [joinLoading, setJoinLoading] = useState(false)
   const [joinError, setJoinError] = useState<string | null>(null)
-  const [confirmModal, setConfirmModal] = useState<'personal' | 'yearbook' | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<AlbumRow | null>(null)
   const [invoicePopupUrl, setInvoicePopupUrl] = useState<string | null>(null)
   const [copyFeedback, setCopyFeedback] = useState(false)
@@ -934,34 +933,10 @@ export default function AlbumsView({ variant, initialData, fetchUrl = '/api/albu
               if (showSearch) setShowSearch(false)
               if (showJoinForm) setShowJoinForm(false)
             }}
-            className={`flex-1 min-w-0 md:flex-initial inline-flex items-center justify-center gap-1 sm:gap-2 px-2 py-2 sm:px-4 sm:py-2 text-[10px] sm:text-sm font-black rounded-lg sm:rounded-xl border-2 border-slate-900 dark:border-slate-700 shadow-[2px_2px_0_0_#0f172a] dark:shadow-[2px_2px_0_0_#334155] transition-all active:scale-95 ${showPreviewForm ? 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-200' : 'bg-emerald-100 text-slate-900 dark:bg-slate-800 dark:text-slate-200 hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none'}`}
+            className={`flex-1 min-w-0 md:flex-initial inline-flex items-center justify-center gap-1 sm:gap-2 px-2 py-2 sm:px-4 sm:py-2 text-[10px] sm:text-sm font-black rounded-lg sm:rounded-xl border-2 border-slate-900 dark:border-slate-700 shadow-[2px_2px_0_0_#0f172a] dark:shadow-[2px_2px_0_0_#334155] transition-all active:scale-95 ${showPreviewForm ? 'bg-slate-200 text-slate-600 dark:bg-slate-800' : 'bg-emerald-400 text-slate-900 dark:bg-emerald-900/40 dark:text-emerald-200 hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none'}`}
           >
             <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
             <span className="whitespace-nowrap truncate">{showPreviewForm ? 'Tutup' : 'View'}</span>
-          </button>
-
-          {/* Search Toggle Button */}
-          <button
-            type="button"
-            onClick={() => {
-              setShowSearch(!showSearch)
-              if (showJoinForm) setShowJoinForm(false)
-              if (showPreviewForm) setShowPreviewForm(false)
-            }}
-            className={`flex-1 min-w-0 md:flex-initial inline-flex items-center justify-center gap-1 sm:gap-2 px-2 py-2 sm:px-4 sm:py-2 text-[10px] sm:text-sm font-black rounded-lg sm:rounded-xl border-2 border-slate-900 dark:border-slate-700 shadow-[2px_2px_0_0_#0f172a] dark:shadow-[2px_2px_0_0_#334155] transition-all active:scale-95 ${showSearch ? 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-200' : 'bg-white text-slate-900 dark:bg-slate-900 dark:text-white hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none'}`}
-          >
-            <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-            <span className="whitespace-nowrap truncate">{showSearch ? 'Tutup' : 'Search'}</span>
-          </button>
-
-          {/* Create Project Button */}
-          <button
-            type="button"
-            onClick={() => setConfirmModal('yearbook')}
-            className="flex-1 min-w-0 md:flex-initial inline-flex items-center justify-center gap-1 sm:gap-2 px-2 py-2 sm:px-4 sm:py-2 text-[10px] sm:text-sm font-black rounded-lg sm:rounded-xl bg-emerald-400 border-2 border-slate-900 dark:border-slate-700 shadow-[2px_2px_0_0_#0f172a] dark:shadow-[2px_2px_0_0_#334155] text-slate-900 dark:text-white hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all active:scale-95"
-          >
-            <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-            <span className="whitespace-nowrap truncate">Buat</span>
           </button>
 
           {/* Join Project Button */}
@@ -972,10 +947,24 @@ export default function AlbumsView({ variant, initialData, fetchUrl = '/api/albu
               if (showSearch) setShowSearch(false)
               if (showPreviewForm) setShowPreviewForm(false)
             }}
-            className={`flex-1 min-w-0 md:flex-initial inline-flex items-center justify-center gap-1 sm:gap-2 px-2 py-2 sm:px-4 sm:py-2 text-[10px] sm:text-sm font-black rounded-lg sm:rounded-xl border-2 border-slate-900 dark:border-slate-700 shadow-[2px_2px_0_0_#0f172a] dark:shadow-[2px_2px_0_0_#334155] transition-all active:scale-95 ${showJoinForm ? 'bg-slate-200 text-slate-600 dark:bg-orange-700 dark:text-white' : 'bg-orange-400 text-slate-900 dark:bg-orange-700 dark:text-white hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none'}`}
+            className={`flex-1 min-w-0 md:flex-initial inline-flex items-center justify-center gap-1 sm:gap-2 px-2 py-2 sm:px-4 sm:py-2 text-[10px] sm:text-sm font-black rounded-lg sm:rounded-xl border-2 border-slate-900 dark:border-slate-700 shadow-[2px_2px_0_0_#0f172a] dark:shadow-[2px_2px_0_0_#334155] transition-all active:scale-95 ${showJoinForm ? 'bg-slate-200 text-slate-600 dark:bg-slate-800' : 'bg-orange-400 text-slate-900 dark:bg-orange-900/40 dark:text-orange-200 hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none'}`}
           >
             <UserPlus className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
             <span className="whitespace-nowrap truncate">{showJoinForm ? 'Tutup' : 'Join'}</span>
+          </button>
+
+          {/* Search Toggle Button */}
+          <button
+            type="button"
+            onClick={() => {
+              setShowSearch(!showSearch)
+              if (showJoinForm) setShowJoinForm(false)
+              if (showPreviewForm) setShowPreviewForm(false)
+            }}
+            className={`flex-1 min-w-0 md:flex-initial inline-flex items-center justify-center gap-1 sm:gap-2 px-2 py-2 sm:px-4 sm:py-2 text-[10px] sm:text-sm font-black rounded-lg sm:rounded-xl border-2 border-slate-900 dark:border-slate-700 shadow-[2px_2px_0_0_#0f172a] dark:shadow-[2px_2px_0_0_#334155] transition-all active:scale-95 ${showSearch ? 'bg-slate-200 text-slate-600 dark:bg-slate-800' : 'bg-sky-400 text-slate-900 dark:bg-sky-900/40 dark:text-sky-200 hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none'}`}
+          >
+            <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+            <span className="whitespace-nowrap truncate">{showSearch ? 'Tutup' : 'Search'}</span>
           </button>
         </div>
       </div>
@@ -1472,34 +1461,6 @@ export default function AlbumsView({ variant, initialData, fetchUrl = '/api/albu
         </div>
       )}
 
-      {/* Modal konfirmasi buat Personal / Yearbook — UI custom, bukan dialog browser */}
-      {confirmModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 dark:bg-black/50 backdrop-blur-md" onClick={() => setConfirmModal(null)}>
-          <div className="bg-white dark:bg-slate-900 border-2 border-slate-900 dark:border-slate-700 rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-[2px_2px_0_0_#0f172a] dark:shadow-[2px_2px_0_0_#334155] text-center" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-xl font-black text-slate-900 dark:text-white mb-6 uppercase tracking-tight">Mulai Project Baru</h3>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setConfirmModal(null)}
-                className="flex-1 py-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 border-2 border-slate-900 dark:border-slate-600 text-slate-900 dark:text-white text-xs font-black uppercase tracking-widest shadow-[2px_2px_0_0_#0f172a] dark:shadow-[2px_2px_0_0_#334155] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (confirmModal === 'personal') router.push(publicCreateHref)
-                  else router.push(showroomHref)
-                  setConfirmModal(null)
-                }}
-                className={`flex-1 py-3.5 rounded-xl border-2 border-slate-900 dark:border-slate-600 text-xs font-black uppercase tracking-widest shadow-[2px_2px_0_0_#0f172a] dark:shadow-[2px_2px_0_0_#334155] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all text-slate-900 dark:text-white ${confirmModal === 'personal' ? 'bg-indigo-400 dark:bg-indigo-600' : 'bg-emerald-400 dark:bg-emerald-600'}`}
-              >
-                Gas Lanjut!
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {inviteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-black/60 backdrop-blur-sm" onClick={() => setInviteModal(null)}>

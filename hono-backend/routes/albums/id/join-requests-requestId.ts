@@ -3,6 +3,7 @@ import { getD1 } from '../../../lib/edge-env'
 import { publishRealtimeEventFromContext } from '../../../lib/realtime'
 import { AppEnv, requireAuthJwt } from '../../../middleware'
 import { getAuthUserFromContext } from '../../../lib/auth-user'
+import { getRole } from '../../../lib/auth'
 
 const joinRequestsRequestId = new Hono<AppEnv>()
 joinRequestsRequestId.use('*', requireAuthJwt)
@@ -31,8 +32,13 @@ joinRequestsRequestId.patch('/', async (c) => {
       .bind(albumId)
       .first<{ user_id: string; individual_payments_enabled?: number }>()
     if (!album) return c.json({ error: 'Album tidak ditemukan' }, 404)
+
+    // Cek apakah user adalah global admin
+    const userRole = await getRole(c, user)
+    const isGlobalAdmin = userRole === 'admin'
+
     const isOwner = album.user_id === user.id
-    if (!isOwner) {
+    if (!isOwner && !isGlobalAdmin) {
       const member = await db
         .prepare(`SELECT role FROM album_members WHERE album_id = ? AND user_id = ?`)
         .bind(albumId, user.id)

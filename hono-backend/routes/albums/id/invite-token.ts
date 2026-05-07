@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { getD1 } from '../../../lib/edge-env'
 import { AppEnv, requireAuthJwt } from '../../../middleware'
 import { getAuthUserFromContext } from '../../../lib/auth-user'
+import { getRole } from '../../../lib/auth'
 
 function generateShortInviteCode(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
@@ -36,8 +37,13 @@ albumInviteTokenRoute.get('/', async (c) => {
   if (!album) {
     return c.json({ error: 'Album not found' }, 404)
   }
+
+  // Cek apakah user adalah global admin
+  const userRole = await getRole(c, user)
+  const isGlobalAdmin = userRole === 'admin'
+
   const isOwner = album.user_id === user.id
-  if (!isOwner) {
+  if (!isOwner && !isGlobalAdmin) {
     const member = await db
       .prepare(
         `SELECT role FROM album_members WHERE album_id = ? AND user_id = ? AND role = 'admin'`
@@ -70,8 +76,13 @@ albumInviteTokenRoute.post('/', async (c) => {
   if (!album) {
     return c.json({ error: 'Album not found' }, 404)
   }
+
+  // Cek apakah user adalah global admin
+  const userRole = await getRole(c, user)
+  const isGlobalAdmin = userRole === 'admin'
+
   const isOwner = album.user_id === user.id
-  if (!isOwner) {
+  if (!isOwner && !isGlobalAdmin) {
     const member = await db
       .prepare(
         `SELECT role FROM album_members WHERE album_id = ? AND user_id = ? AND role = 'admin'`

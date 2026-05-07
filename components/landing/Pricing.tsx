@@ -646,12 +646,18 @@ export function Pricing() {
                     <label className="text-[11px] sm:text-sm font-medium text-slate-700 dark:text-white/90">
                       Siswa
                     </label>
-                    <input
-                      type="number"
-                      value={jumlahSiswa}
-                      onChange={(e) => setJumlahSiswa(Number(e.target.value))}
-                      className="w-16 bg-transparent border-none text-right focus:outline-none text-[11px] sm:text-sm font-semibold text-lime-600 dark:text-lime-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    />
+                    <div className="flex items-center bg-slate-50 dark:bg-slate-900/40 border-2 border-slate-900 dark:border-white/10 rounded-lg px-2 py-1 shadow-[2px_2px_0_0_#000] dark:shadow-neo-glow-sm transition-all focus-within:translate-x-[1px] focus-within:translate-y-[1px] focus-within:shadow-none">
+                      <input
+                        type="number"
+                        min={20}
+                        value={jumlahSiswa === 0 ? '' : jumlahSiswa}
+                        onChange={(e) => setJumlahSiswa(e.target.value === '' ? 0 : Number(e.target.value))}
+                        onBlur={() => {
+                          if (jumlahSiswa < 20) setJumlahSiswa(20);
+                        }}
+                        className="w-10 bg-transparent border-none text-center focus:outline-none text-[11px] sm:text-sm font-black text-lime-600 dark:text-lime-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                    </div>
                   </div>
                   <input
                     type="range"
@@ -665,12 +671,18 @@ export function Pricing() {
                 <div>
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-1.5 sm:mb-2">
                     <label className="text-[11px] sm:text-sm font-medium text-slate-700 dark:text-white/90">Kelas</label>
-                    <input
-                      type="number"
-                      value={jumlahKelas}
-                      onChange={(e) => setJumlahKelas(Number(e.target.value))}
-                      className="w-12 bg-transparent border-none text-right focus:outline-none text-[11px] sm:text-sm font-semibold text-lime-600 dark:text-lime-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    />
+                    <div className="flex items-center bg-slate-50 dark:bg-slate-900/40 border-2 border-slate-900 dark:border-white/10 rounded-lg px-2 py-1 shadow-[2px_2px_0_0_#000] dark:shadow-neo-glow-sm transition-all focus-within:translate-x-[1px] focus-within:translate-y-[1px] focus-within:shadow-none">
+                      <input
+                        type="number"
+                        min={1}
+                        value={jumlahKelas === 0 ? '' : jumlahKelas}
+                        onChange={(e) => setJumlahKelas(e.target.value === '' ? 0 : Number(e.target.value))}
+                        onBlur={() => {
+                          if (jumlahKelas < 1) setJumlahKelas(1);
+                        }}
+                        className="w-8 bg-transparent border-none text-center focus:outline-none text-[11px] sm:text-sm font-black text-lime-600 dark:text-lime-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                    </div>
                   </div>
                   <input
                     type="range"
@@ -688,21 +700,22 @@ export function Pricing() {
                   <label className="text-[11px] sm:text-sm font-medium text-slate-700 dark:text-white/90">
                     Tebal Buku
                   </label>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center bg-slate-50 dark:bg-slate-900/40 border-2 border-slate-900 dark:border-white/10 rounded-lg px-2 py-1 shadow-[2px_2px_0_0_#000] dark:shadow-neo-glow-sm transition-all focus-within:translate-x-[1px] focus-within:translate-y-[1px] focus-within:shadow-none">
                     <input
                       type="number"
-                      value={tebalBuku}
-                      onChange={(e) => setTebalBuku(Number(e.target.value))}
-                      className="w-12 bg-transparent border-none text-right focus:outline-none text-[11px] sm:text-sm font-semibold text-lime-600 dark:text-lime-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      min={40}
+                      value={tebalBuku === 0 ? '' : tebalBuku}
+                      onChange={(e) => setTebalBuku(e.target.value === '' ? 0 : Number(e.target.value))}
+                      onBlur={() => {
+                        if (tebalBuku < 40) setTebalBuku(40);
+                      }}
+                      className="w-10 bg-transparent border-none text-center focus:outline-none text-[11px] sm:text-sm font-black text-lime-600 dark:text-lime-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
-                    <span className="text-[11px] sm:text-sm font-semibold text-lime-600 dark:text-lime-400">
-                      Hal
-                    </span>
                   </div>
                 </div>
                 <input
                   type="range"
-                  min={20}
+                  min={40}
                   max={200}
                   step={4}
                   value={tebalBuku}
@@ -791,9 +804,6 @@ export function Pricing() {
                 <h4 className="text-[11px] sm:text-sm font-semibold uppercase tracking-wide text-slate-900 dark:text-white/90">
                   Estimasi Per Siswa
                 </h4>
-                <span className="rounded-md border border-slate-900 dark:border-white/30 bg-transparent px-1.5 py-0.5 text-[10px] font-medium text-slate-600 dark:text-white">
-                  Live
-                </span>
               </div>
 
               <p className="text-xl sm:text-4xl font-bold text-lime-600 dark:text-lime-400">

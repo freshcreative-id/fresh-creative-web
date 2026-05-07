@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
+import React, { useState, useRef, useCallback, useEffect, useLayoutEffect, useMemo } from 'react'
 import {
     motion,
     useMotionValue,
@@ -119,6 +119,8 @@ type CardItem = {
     description?: string
     videoUrl?: string | null
     meta?: { icon: React.ReactNode; text: string }[]
+    /** Sama seperti editor cover: posisi crop untuk object-fit */
+    imageObjectPosition?: string | null
 }
 
 // ─── Framer-motion Tinder Card ───
@@ -242,6 +244,47 @@ function TinderCard({ children, onSwipe, onCardLeftScreen, onDragStart, onDrag, 
     )
 }
 
+/** Foto deck: ukuran intrinsic dari img (termasuk cache / tanpa onLoad) → landscape = contain, portrait/kotak = cover. */
+function PreviewDeckPhoto({
+    src,
+    alt,
+    imageObjectPosition,
+}: {
+    src: string
+    alt: string
+    imageObjectPosition?: string | null
+}) {
+    const imgRef = useRef<HTMLImageElement | null>(null)
+    /** null = belum ukur */
+    const [isLandscape, setIsLandscape] = useState<boolean | null>(null)
+
+    const syncFromElement = useCallback(() => {
+        const el = imgRef.current
+        if (!el?.naturalWidth) return
+        setIsLandscape(el.naturalWidth > el.naturalHeight)
+    }, [])
+
+    useLayoutEffect(() => {
+        syncFromElement()
+    }, [syncFromElement])
+
+    const fitClass = isLandscape === false ? 'object-cover' : 'object-contain'
+
+    return (
+        <FastImage
+            ref={imgRef}
+            src={src}
+            alt={alt}
+            className={`h-full w-full object-center ${fitClass}`}
+            style={imageObjectPosition ? { objectPosition: imageObjectPosition } : undefined}
+            draggable={false}
+            priority
+            decoding="sync"
+            onLoad={syncFromElement}
+        />
+    )
+}
+
 // ─── Main PreviewView ───
 export default function PreviewView({
     album,
@@ -282,6 +325,17 @@ export default function PreviewView({
     const photoTapRef = useRef<{ x: number; y: number; cardId: string | null }>({ x: 0, y: 0, cardId: null })
     // Progress swipe ke atas (0..1) untuk reveal kartu belakang dengan smooth.
     const [upRevealProgress, setUpRevealProgress] = useState(0)
+
+    /** HP dalam orientasi landscape: ruang vertikal sempit — kecilkan chrome agar foto terlihat jelas. */
+    const [isMobileLandscape, setIsMobileLandscape] = useState(false)
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+        const mq = window.matchMedia('(orientation: landscape) and (max-height: 500px)')
+        const sync = () => setIsMobileLandscape(mq.matches)
+        sync()
+        mq.addEventListener('change', sync)
+        return () => mq.removeEventListener('change', sync)
+    }, [])
 
     // ── Navbar scroll ref (desktop wheel + drag-to-scroll) ──
     const navScrollRef = useRef<HTMLDivElement>(null)
@@ -327,6 +381,7 @@ export default function PreviewView({
                 title: album?.name || 'Album',
                 subtitle: album?.description || '',
                 videoUrl: album?.cover_video_url,
+                imageObjectPosition: album?.cover_image_position ?? undefined,
             }]
         }
         if (currentSection.type === 'sambutan') {
@@ -534,12 +589,16 @@ export default function PreviewView({
         const photoIdx = gLen > 0 ? (photoIndexByCardId[card.id] ?? 0) % gLen : 0
         const displayUrl = gLen > 0 ? galleryUrls[photoIdx] : null
         const showDots = gLen > 1
+        const ml = isMobileLandscape
+        const gradientCoverPct = ml ? 36 : 70
 
         return (
-            <div className="relative w-full h-full rounded-3xl overflow-hidden select-none isolate transform-gpu bg-white dark:bg-black ring-2 ring-slate-900 dark:ring-white/80">
+            <div
+                className="relative h-full w-full select-none isolate transform-gpu overflow-hidden rounded-3xl bg-white dark:bg-black ring-2 ring-inset ring-slate-900 dark:ring-white/80"
+            >
                 {/* ── Photo ── */}
                 <div
-                    className={`absolute inset-0 ${isFrontCard && showDots ? 'cursor-pointer' : ''}`}
+                    className={`absolute inset-0 bg-slate-50 dark:bg-zinc-800 ${isFrontCard && showDots ? 'cursor-pointer' : ''}`}
                     onPointerDown={
                         isFrontCard && showDots
                             ? (e) => { photoTapRef.current = { x: e.clientX, y: e.clientY, cardId: card.id } }
@@ -559,22 +618,27 @@ export default function PreviewView({
                     }
                 >
                     {displayUrl ? (
-                        <FastImage src={displayUrl} alt={card.title} className="h-full w-full object-cover" draggable={false} priority />
+                        <PreviewDeckPhoto
+                            key={`${card.id}-${displayUrl}`}
+                            src={displayUrl}
+                            alt={card.title}
+                            imageObjectPosition={card.imageObjectPosition}
+                        />
                     ) : (
                         <div className="w-full h-full bg-slate-100 dark:bg-zinc-800 flex items-center justify-center">
-                            <Users className="w-16 h-16 text-slate-300 dark:text-zinc-600" />
+                            <Users className={`text-slate-300 dark:text-zinc-600 ${ml ? 'w-10 h-10' : 'w-16 h-16'}`} />
                         </div>
                     )}
                 </div>
 
                 {/* ── Photo dots ── */}
                 {showDots && (
-                    <div className="absolute top-2 left-0 right-0 z-30 flex justify-center gap-1.5 pointer-events-none">
+                    <div className={`absolute left-0 right-0 z-30 flex justify-center pointer-events-none ${ml ? 'top-1 gap-1' : 'top-2 gap-1.5'}`}>
                         {galleryUrls.map((_, i) => (
                             <span
                                 key={i}
-                                className={`h-1.5 rounded-full transition-all duration-300 ${i === photoIdx
-                                        ? 'bg-slate-900 dark:bg-white w-6 shadow-[0_0_6px_rgba(0,0,0,0.3)] dark:shadow-[0_0_6px_rgba(255,255,255,0.5)]'
+                                className={`rounded-full transition-all duration-300 ${ml ? 'h-1' : 'h-1.5'} ${i === photoIdx
+                                        ? `bg-slate-900 dark:bg-white ${ml ? 'w-4' : 'w-6'} shadow-[0_0_6px_rgba(0,0,0,0.3)] dark:shadow-[0_0_6px_rgba(255,255,255,0.5)]`
                                         : 'bg-slate-900/30 dark:bg-white/40 w-1.5'
                                     }`}
                             />
@@ -587,7 +651,7 @@ export default function PreviewView({
                     className="absolute inset-x-0 z-10 pointer-events-none dark:hidden"
                     style={{
                         bottom: '-1px',
-                        height: 'calc(70% + 1px)',
+                        height: `calc(${gradientCoverPct}% + 1px)`,
                         backgroundImage: 'linear-gradient(to top, rgba(255,255,255,1) 0%, rgba(255,255,255,0.95) 20%, rgba(255,255,255,0.7) 40%, rgba(255,255,255,0.3) 60%, rgba(255,255,255,0) 100%)',
                     }}
                 />
@@ -595,16 +659,16 @@ export default function PreviewView({
                     className="absolute inset-x-0 z-10 pointer-events-none hidden dark:block"
                     style={{
                         bottom: '-1px',
-                        height: 'calc(70% + 1px)',
+                        height: `calc(${gradientCoverPct}% + 1px)`,
                         backgroundImage: 'linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.95) 20%, rgba(0,0,0,0.7) 40%, rgba(0,0,0,0.3) 60%, rgba(0,0,0,0) 100%)',
                     }}
                 />
 
                 {/* ── Text content ── */}
-                <div className="absolute inset-x-0 bottom-0 z-20 pointer-events-none px-5 pb-5 sm:px-6 sm:pb-6 flex flex-col gap-2">
+                <div className={`absolute inset-x-0 bottom-0 z-20 pointer-events-none flex flex-col ${ml ? 'gap-0.5 px-3 pb-2 pt-1' : 'gap-2 px-5 pb-5 sm:px-6 sm:pb-6'}`}>
                     {/* Name */}
                     <h2
-                        className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white leading-tight tracking-tight uppercase drop-shadow-lg"
+                        className={`font-black text-slate-900 dark:text-white leading-tight tracking-tight uppercase drop-shadow-lg ${ml ? 'text-sm' : 'text-2xl sm:text-3xl'}`}
                         style={{ textShadow: '0 2px 12px rgba(0,0,0,0.15)' }}
                     >
                         {card.title}
@@ -612,16 +676,16 @@ export default function PreviewView({
 
                     {/* Subtitle */}
                     {card.subtitle && (
-                        <p className="text-sm font-semibold text-slate-600 dark:text-white/80 tracking-wide">
+                        <p className={`font-semibold text-slate-600 dark:text-white/80 tracking-wide ${ml ? 'text-[10px] leading-snug line-clamp-2' : 'text-sm'}`}>
                             {card.subtitle}
                         </p>
                     )}
 
                     {/* Badges */}
                     {card.badges && card.badges.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5">
+                        <div className={`flex flex-wrap ${ml ? 'gap-1' : 'gap-1.5'}`}>
                             {card.badges.map((b, i) => (
-                                <span key={i} className="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide bg-slate-900/10 dark:bg-white/15 backdrop-blur-sm text-slate-900 dark:text-white ring-1 ring-slate-900/15 dark:ring-white/20">
+                                <span key={i} className={`font-bold rounded-full uppercase tracking-wide bg-slate-900/10 dark:bg-white/15 backdrop-blur-sm text-slate-900 dark:text-white ring-1 ring-slate-900/15 dark:ring-white/20 ${ml ? 'text-[8px] px-1.5 py-0.5' : 'text-[10px] px-2.5 py-1'}`}>
                                     {b.label}
                                 </span>
                             ))}
@@ -630,8 +694,8 @@ export default function PreviewView({
 
                     {/* Description / message */}
                     {card.description && (
-                        <div className="relative pl-3 border-l-2 border-slate-900 dark:border-white/40 mt-1">
-                            <p className="text-sm text-slate-600 dark:text-white/85 font-medium italic line-clamp-3 leading-relaxed">
+                        <div className={`relative border-l-2 border-slate-900 dark:border-white/40 ${ml ? 'pl-2 mt-0.5' : 'pl-3 mt-1'}`}>
+                            <p className={`text-slate-600 dark:text-white/85 font-medium italic leading-relaxed ${ml ? 'text-[10px] line-clamp-2' : 'text-sm line-clamp-3'}`}>
                                 &ldquo;{card.description}&rdquo;
                             </p>
                         </div>
@@ -639,27 +703,28 @@ export default function PreviewView({
 
                     {/* Meta: birthday, instagram - icon only, clickable if full URL */}
                     {card.meta && card.meta.length > 0 && (
-                        <div className="flex flex-wrap justify-center gap-2 mt-1">
+                        <div className={`flex flex-wrap justify-center ${ml ? 'gap-1 mt-0.5' : 'gap-2 mt-1'}`}>
                             {card.meta.map((m, i) => {
                                 const text = typeof m.text === 'string' ? m.text : ''
                                 const isClickableUrl = /^(https?:\/\/|mailto:)/.test(text)
+                                const metaIconSize = ml ? 9 : 14
                                 const Wrapper = isClickableUrl ? 'a' : 'div'
                                 const wrapperProps = isClickableUrl ? {
                                     href: text,
                                     target: text.startsWith('http') ? '_blank' : undefined,
                                     rel: text.startsWith('http') ? 'noopener noreferrer' : undefined,
                                     onClick: (e: React.MouseEvent) => e.stopPropagation(),
-                                    className: 'pointer-events-auto flex items-center justify-center w-8 h-8 rounded-full bg-slate-900/10 dark:bg-white/15 backdrop-blur-sm text-slate-900 dark:text-white ring-1 ring-slate-900 dark:ring-white/80 transition-all hover:bg-slate-900/20 dark:hover:bg-white/25 active:scale-95 cursor-pointer',
+                                    className: `pointer-events-auto flex items-center justify-center rounded-full bg-slate-900/10 dark:bg-white/15 backdrop-blur-sm text-slate-900 dark:text-white ring-1 ring-slate-900 dark:ring-white/80 transition-all hover:bg-slate-900/20 dark:hover:bg-white/25 active:scale-95 cursor-pointer ${ml ? 'h-5 w-5' : 'w-8 h-8'}`,
                                 } : {
-                                    className: 'flex items-center gap-2 px-3 h-8 rounded-full bg-slate-900/10 dark:bg-white/15 backdrop-blur-sm text-slate-700 dark:text-white/80 ring-1 ring-slate-900 dark:ring-white/80',
+                                    className: `flex items-center rounded-full bg-slate-900/10 dark:bg-white/15 backdrop-blur-sm text-slate-700 dark:text-white/80 ring-1 ring-slate-900 dark:ring-white/80 ${ml ? 'h-5 gap-0.5 px-1.5' : 'gap-2 px-3 h-8'}`,
                                 }
                                 return (
                                     <Wrapper key={i} {...wrapperProps}>
                                         <span className="flex-shrink-0 text-slate-400 dark:text-white/60">
-                                            {React.cloneElement(m.icon as React.ReactElement<{ size?: number }>, { size: 14 })}
+                                            {React.cloneElement(m.icon as React.ReactElement<{ size?: number }>, { size: metaIconSize })}
                                         </span>
                                         {!isClickableUrl && text ? (
-                                            <span className="text-[11px] font-bold tracking-wide text-slate-700 dark:text-white/85">
+                                            <span className={`font-bold tracking-wide text-slate-700 dark:text-white/85 ${ml ? 'text-[8px] leading-tight' : 'text-[11px]'}`}>
                                                 {text}
                                             </span>
                                         ) : null}
@@ -678,9 +743,9 @@ export default function PreviewView({
                                 if (onPlayVideo) onPlayVideo(card.videoUrl!)
                                 else setVideoPopupUrl(card.videoUrl!)
                             }}
-                            className="pointer-events-auto mt-1 flex items-center justify-center gap-2 w-full px-4 py-3 rounded-2xl bg-slate-900/10 dark:bg-white/15 backdrop-blur-md text-slate-900 dark:text-white text-xs font-bold tracking-widest uppercase ring-1 ring-slate-900 dark:ring-white/80 transition-all hover:bg-slate-900/20 dark:hover:bg-white/25 active:scale-[0.97]"
+                            className={`pointer-events-auto flex items-center justify-center w-full rounded-2xl bg-slate-900/10 dark:bg-white/15 backdrop-blur-md text-slate-900 dark:text-white font-bold tracking-widest uppercase ring-1 ring-slate-900 dark:ring-white/80 transition-all hover:bg-slate-900/20 dark:hover:bg-white/25 active:scale-[0.97] ${ml ? 'mt-0.5 gap-0.5 px-2 py-1 text-[8px]' : 'mt-1 gap-2 px-4 py-3 text-xs'}`}
                         >
-                            <Play className="w-4 h-4 fill-slate-900 dark:fill-white" />
+                            <Play className={`shrink-0 fill-slate-900 dark:fill-white ${ml ? 'h-2.5 w-2.5' : 'h-4 w-4'}`} />
                             <span>Play Video</span>
                         </button>
                     )}
@@ -702,49 +767,64 @@ export default function PreviewView({
     }
 
     return (
-        <div className="fixed inset-0 z-[90] bg-slate-100 dark:bg-zinc-950 flex flex-col">
+        <div className="fixed inset-0 z-[90] flex min-h-0 min-w-0 flex-col bg-slate-100 dark:bg-zinc-950">
             {/* ── Floating top bar: label left, close right ── */}
+            {/* Bar atas: lebar penuh dengan jarak kiri–kanan kecil (sama dengan area kartu) */}
             <div
-                className="absolute z-[60] flex items-center justify-between pointer-events-none"
+                className="pointer-events-none absolute left-2 right-2 z-[60] flex items-center justify-between sm:left-3 sm:right-3"
                 style={{
-                    top: 'calc(env(safe-area-inset-top) + 10px)',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    width: 'min(92vw, 420px)',
+                    top: `calc(env(safe-area-inset-top) + ${isMobileLandscape ? 6 : 10}px)`,
                 }}
             >
-                <div className="flex items-center gap-2">
+                <div className={`flex items-center ${isMobileLandscape ? 'gap-1.5' : 'gap-2'}`}>
                     <div
-                        className="flex items-center gap-1.5 px-3 rounded-full bg-white/85 dark:bg-black/55 backdrop-blur-md text-slate-900 dark:text-white ring-1 ring-slate-900/10 dark:ring-white/15 leading-none shadow-sm"
-                        style={{ height: 32, fontSize: 12, fontWeight: 650 }}
+                        className="flex items-center rounded-full bg-white/85 dark:bg-black/55 backdrop-blur-md text-slate-900 dark:text-white ring-1 ring-slate-900/10 dark:ring-white/15 leading-none shadow-sm"
+                        style={{
+                            height: isMobileLandscape ? 26 : 32,
+                            fontSize: isMobileLandscape ? 10 : 12,
+                            fontWeight: 650,
+                            paddingLeft: isMobileLandscape ? 10 : 12,
+                            paddingRight: isMobileLandscape ? 10 : 12,
+                            gap: isMobileLandscape ? 4 : 6,
+                        }}
                     >
-                        {React.cloneElement(currentSection.icon as React.ReactElement<{ className?: string }>, { className: 'w-4 h-4 opacity-70' })}
-                        <span className="truncate max-w-[140px] sm:max-w-none tracking-wide">{currentSection.label}</span>
+                        {React.cloneElement(currentSection.icon as React.ReactElement<{ className?: string }>, {
+                            className: isMobileLandscape ? 'w-3 h-3 opacity-70' : 'w-4 h-4 opacity-70',
+                        })}
+                        <span className={`truncate tracking-wide ${isMobileLandscape ? 'max-w-[100px]' : 'max-w-[140px] sm:max-w-none'}`}>{currentSection.label}</span>
                     </div>
                     {totalItems > 1 && (
                         <div
-                            className="flex items-center tabular-nums px-3 rounded-full bg-white/85 dark:bg-black/55 backdrop-blur-md text-slate-600 dark:text-white/75 ring-1 ring-slate-900/10 dark:ring-white/15 leading-none shadow-sm"
-                            style={{ height: 32, fontSize: 12, fontWeight: 650 }}
+                            className="flex items-center tabular-nums rounded-full bg-white/85 dark:bg-black/55 backdrop-blur-md text-slate-600 dark:text-white/75 ring-1 ring-slate-900/10 dark:ring-white/15 leading-none shadow-sm"
+                            style={{
+                                height: isMobileLandscape ? 26 : 32,
+                                fontSize: isMobileLandscape ? 10 : 12,
+                                fontWeight: 650,
+                                paddingLeft: isMobileLandscape ? 10 : 12,
+                                paddingRight: isMobileLandscape ? 10 : 12,
+                            }}
                         >
                             {itemIndex + 1}/{totalItems}
                         </div>
                     )}
                 </div>
-                <div className="flex items-center gap-3">
-                    <img src="/img/logo.webp" alt="Logo" className="w-5 h-5 object-contain opacity-70" />
+                <div className={`flex items-center ${isMobileLandscape ? 'gap-2' : 'gap-3'}`}>
+                    <img src="/img/logo.webp" alt="Logo" className={`object-contain opacity-70 ${isMobileLandscape ? 'h-4 w-4' : 'h-5 w-5'}`} />
                     <button
                         type="button"
                         onClick={onClose}
                         className="pointer-events-auto rounded-full flex items-center justify-center bg-white/85 dark:bg-black/75 backdrop-blur-md text-slate-900 dark:text-white hover:bg-white dark:hover:bg-black transition-all ring-1 ring-slate-900/15 dark:ring-white/30 p-0 m-0 border-0"
-                        style={{ height: 32, width: 32 }}
+                        style={{ height: isMobileLandscape ? 26 : 32, width: isMobileLandscape ? 26 : 32 }}
                     >
-                        <X style={{ width: 18, height: 18 }} strokeWidth={3} />
+                        <X style={{ width: isMobileLandscape ? 12 : 18, height: isMobileLandscape ? 12 : 18 }} strokeWidth={isMobileLandscape ? 2.5 : 3} />
                     </button>
                 </div>
             </div>
 
-            {/* ── Card Area (full height) ── */}
-            <div className="flex-1 relative flex items-center justify-center px-3 sm:px-6 pt-2 pb-2 z-50 overflow-hidden bg-slate-100 dark:bg-zinc-950">
+            {/* Area kartu: padding konsisten — kartu mengisi penuh (portrait & landscape, semua ukuran layar) */}
+            <div
+                className="relative z-50 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-slate-100 dark:bg-zinc-950 px-2 py-1.5 sm:px-3 sm:py-2"
+            >
                 <AnimatePresence custom={sectionDirection} initial={false}>
                     <motion.div
                         key={sectionIndex}
@@ -758,8 +838,9 @@ export default function PreviewView({
                             opacity: { duration: 0.15 },
                             scale: { duration: 0.15 },
                         }}
-                        className="absolute w-[92%] sm:w-full max-w-[420px] h-[calc(100%-8px)] select-none"
+                        className="absolute inset-0 min-h-0 w-full select-none"
                     >
+                        <div className="relative h-full min-h-0 w-full">
                         {activeDeck.slice(0, 3).reverse().map((card, i, arr) => {
                             const cardIndex = arr.length - 1 - i
                             const isFrontCard = cardIndex === 0
@@ -822,18 +903,22 @@ export default function PreviewView({
                                 </motion.div>
                             )
                         })}
+                        </div>
                     </motion.div>
                 </AnimatePresence>
             </div>
 
             {/* ── Bottom Navigation ── */}
             <div
-                className="flex-shrink-0 z-20 w-full flex justify-center"
-                style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 14px)', paddingTop: 8 }}
+                className="z-20 flex w-full max-w-none shrink-0 justify-center px-2 sm:px-3"
+                style={{
+                    paddingBottom: `calc(env(safe-area-inset-bottom) + ${isMobileLandscape ? 6 : 14}px)`,
+                    paddingTop: isMobileLandscape ? 4 : 8,
+                }}
             >
                 <div
                     ref={navScrollRef}
-                    className="flex items-center gap-0.5 px-1.5 py-1.5 rounded-2xl bg-white/92 dark:bg-zinc-900/92 backdrop-blur-2xl shadow-2xl shadow-black/15 dark:shadow-black/50 ring-1 ring-black/8 dark:ring-white/10 overflow-x-auto no-scrollbar max-w-[92vw] sm:max-w-[480px] select-none"
+                    className={`flex w-full max-w-none items-center overflow-x-auto rounded-2xl bg-white/92 dark:bg-zinc-900/92 backdrop-blur-2xl shadow-2xl shadow-black/15 dark:shadow-black/50 ring-1 ring-black/8 dark:ring-white/10 no-scrollbar select-none ${isMobileLandscape ? 'gap-0 px-1 py-1' : 'gap-0.5 px-1.5 py-1.5'}`}
                     style={{ cursor: 'grab' }}
                     onWheel={handleNavWheel}
                     onMouseDown={handleNavMouseDown}
@@ -849,7 +934,7 @@ export default function PreviewView({
                         return (
                             <React.Fragment key={i}>
                                 {showDivider && (
-                                    <span className="flex-shrink-0 w-px h-5 rounded-full bg-slate-900/12 dark:bg-white/12 mx-0.5" />
+                                    <span className={`flex-shrink-0 rounded-full bg-slate-900/12 dark:bg-white/12 mx-0.5 ${isMobileLandscape ? 'h-4 w-px' : 'h-5 w-px'}`} />
                                 )}
                                 <button
                                     type="button"
@@ -859,8 +944,11 @@ export default function PreviewView({
                                             setSectionIndex(i)
                                         }
                                     }}
-                                    className="relative flex items-center gap-1.5 flex-shrink-0 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-slate-900/50 dark:focus-visible:ring-white/50 transition-colors duration-150"
-                                    style={{ padding: '6px 10px', minWidth: 0 }}
+                                    className="relative flex items-center flex-shrink-0 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-slate-900/50 dark:focus-visible:ring-white/50 transition-colors duration-150"
+                                    style={{
+                                        padding: isMobileLandscape ? '4px 8px' : '6px 10px',
+                                        minWidth: 0,
+                                    }}
                                     aria-current={isActive ? 'page' : undefined}
                                 >
                                     {isActive && (
@@ -870,13 +958,13 @@ export default function PreviewView({
                                             transition={{ type: 'spring', stiffness: 420, damping: 38, mass: 0.9 }}
                                         />
                                     )}
-                                    <span className={`relative z-10 flex items-center gap-1.5 transition-colors duration-150 ${isActive ? 'text-white dark:text-zinc-900' : 'text-slate-400 dark:text-zinc-500 hover:text-slate-700 dark:hover:text-zinc-200'}`}>
+                                    <span className={`relative z-10 flex items-center transition-colors duration-150 ${isActive ? 'text-white dark:text-zinc-900' : 'text-slate-400 dark:text-zinc-500 hover:text-slate-700 dark:hover:text-zinc-200'} ${isMobileLandscape ? 'gap-1' : 'gap-1.5'}`}>
                                         {React.cloneElement(s.icon as React.ReactElement<{ className?: string }>, {
-                                            className: 'w-3.5 h-3.5 flex-shrink-0',
+                                            className: isMobileLandscape ? 'h-3 w-3 flex-shrink-0' : 'w-3.5 h-3.5 flex-shrink-0',
                                         })}
                                         <span
-                                            className="text-[11px] font-bold tracking-wide truncate"
-                                            style={{ maxWidth: isActive ? 72 : 52 }}
+                                            className={`font-bold tracking-wide truncate ${isMobileLandscape ? 'text-[9px]' : 'text-[11px]'}`}
+                                            style={{ maxWidth: isActive ? (isMobileLandscape ? 56 : 72) : (isMobileLandscape ? 44 : 52) }}
                                         >
                                             {s.label}
                                         </span>
@@ -897,12 +985,12 @@ export default function PreviewView({
                         exit={{ opacity: 0 }}
                         className="fixed inset-0 z-[100] bg-black/90 dark:bg-black/95 flex flex-col items-center justify-center p-4"
                     >
-                        <div className="absolute top-4 right-4 z-10">
+                        <div className={`absolute z-10 ${isMobileLandscape ? 'right-2 top-2' : 'right-4 top-4'}`}>
                             <button
                                 onClick={() => setVideoPopupUrl(null)}
-                                className="w-10 h-10 rounded-full flex items-center justify-center bg-white/20 text-white hover:bg-white/30 transition-all backdrop-blur-sm"
+                                className={`rounded-full flex items-center justify-center bg-white/20 text-white hover:bg-white/30 transition-all backdrop-blur-sm ${isMobileLandscape ? 'h-7 w-7' : 'h-10 w-10'}`}
                             >
-                                <X className="w-5 h-5" />
+                                <X className={isMobileLandscape ? 'h-3.5 w-3.5' : 'h-5 w-5'} strokeWidth={isMobileLandscape ? 2.5 : 2} />
                             </button>
                         </div>
                         <motion.div
@@ -910,7 +998,7 @@ export default function PreviewView({
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.95, opacity: 0 }}
                             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                            className="w-full max-w-4xl max-h-[85vh] aspect-video rounded-2xl overflow-hidden bg-black ring-1 ring-white/10 relative"
+                            className={`w-full rounded-2xl overflow-hidden bg-black ring-1 ring-white/10 relative aspect-video ${isMobileLandscape ? 'max-h-[72vh] max-w-2xl' : 'max-h-[85vh] max-w-4xl'}`}
                         >
                             <video
                                 src={videoPopupUrl}

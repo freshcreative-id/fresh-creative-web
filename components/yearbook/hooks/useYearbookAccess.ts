@@ -25,7 +25,7 @@ export function useYearbookAccess(
   const fetchAllAccess = useCallback(async (albumRef: React.MutableRefObject<any>) => {
     if (!id || isFetchingAccessRef.current) return
     const currentAlbum = albumRef.current
-    const canManageAlbum = currentAlbum?.isOwner === true || currentAlbum?.isAlbumAdmin === true
+    const canManageAlbum = currentAlbum?.isOwner === true || currentAlbum?.isAlbumAdmin === true || currentAlbum?.isGlobalAdmin === true
 
     try {
       isFetchingAccessRef.current = true

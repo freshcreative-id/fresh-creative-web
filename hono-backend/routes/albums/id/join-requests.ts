@@ -3,6 +3,7 @@ import { getD1 } from '../../../lib/edge-env'
 import { publishRealtimeEventFromContext } from '../../../lib/realtime'
 import { AppEnv, requireAuthJwt } from '../../../middleware'
 import { getAuthUserFromContext } from '../../../lib/auth-user'
+import { getRole } from '../../../lib/auth'
 
 const albumJoinRequestsRoute = new Hono<AppEnv>()
 albumJoinRequestsRoute.use('*', requireAuthJwt)
@@ -16,6 +17,28 @@ albumJoinRequestsRoute.get('/', async (c) => {
     const user = getAuthUserFromContext(c)
     if (!user) {
       return c.json({ error: 'Unauthorized' }, 401)
+    }
+
+    const album = await db
+      .prepare(`SELECT user_id FROM albums WHERE id = ?`)
+      .bind(albumId)
+      .first<{ user_id: string }>()
+    if (!album) return c.json({ error: 'Album not found' }, 404)
+
+    const userRole = await getRole(c, user)
+    const isGlobalAdmin = userRole === 'admin'
+    const isOwner = album.user_id === user.id
+
+    if (!isOwner && !isGlobalAdmin) {
+      const member = await db
+        .prepare(
+          `SELECT role FROM album_members WHERE album_id = ? AND user_id = ? AND role = 'admin'`
+        )
+        .bind(albumId, user.id)
+        .first<{ role: string }>()
+      if (!member) {
+        return c.json({ error: 'Forbidden' }, 403)
+      }
     }
     if (status === 'approved') {
       const { results: approvedData } = await db
