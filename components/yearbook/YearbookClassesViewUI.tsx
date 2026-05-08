@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, Plus, Trash2, Check, X, Edit3, ImagePlus, Video, Play, Minus, Instagram, Users, ClipboardList, Menu, Cake, Copy, Link, Clock, BookOpen, MessageSquare, Search, Shirt, UserCircle, ImageIcon, Images, Link as LinkIcon, Sparkles, Book, Layout, Eye, UserCog, LayoutGrid, Zap, ShieldCheck, Lock } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Plus, Trash2, Check, X, Edit3, ImagePlus, Video, Play, Minus, Instagram, Users, ClipboardList, Menu, Cake, Copy, Link, Clock, BookOpen, MessageSquare, Search, Shirt, UserCircle, ImageIcon, Images, Link as LinkIcon, Sparkles, Book, Layout, Eye, UserCog, LayoutGrid, Zap, ShieldCheck, Lock } from 'lucide-react'
 import { toast } from '@/lib/toast'
 import NextLink from 'next/link'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
@@ -198,6 +198,7 @@ export default function YearbookClassesViewUI(props: any) {
   const [approvedLoaded, setApprovedLoaded] = useState(false)
   const [teamLoaded, setTeamLoaded] = useState(false)
   const [joinStats, setJoinStats] = useState<any>(null)
+  const [mediaSectionCollapsed, setMediaSectionCollapsed] = useState(false)
   const [savingLimit, setSavingLimit] = useState(false)
   const [approvalTab, setApprovalTab] = useState<'pending' | 'approved' | 'team'>('pending')
   const [teacherCount, setTeacherCount] = useState<number | null>(null)
@@ -1573,8 +1574,8 @@ export default function YearbookClassesViewUI(props: any) {
 
               {classes.length > 0 && (
                 <div className={!isCoverView && sidebarMode === 'classes' ? 'block w-full h-full' : 'hidden'}>
-                  {/* Classes Content - Original grid view */
-                    (() => {
+                  {/* Classes Content - Original grid view */}
+                  {(() => {
                       const access = myAccessByClass[currentClass.id]
                       const hasApprovedAccess = access?.status === 'approved'
                       const rawClassMembers = membersByClass[currentClass.id] ?? []
@@ -1696,165 +1697,173 @@ export default function YearbookClassesViewUI(props: any) {
                           {/* Class Info */}
                           <div className="px-4">
                             {/* Group Photo Section */}
-                            <div className="mb-14">
-                              <div className="flex items-center justify-between mb-6 gap-3">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-2 h-8 bg-indigo-500 dark:bg-indigo-600 rounded-full border-2 border-black dark:border-slate-700 shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b]"></div>
-                                  <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-[0.2em]">Foto &amp; Video Kelas</h3>
-                                </div>
-                              </div>
-                              <div className="relative">
-                                {(() => {
-                                  const hasPhoto = !!currentClass.batch_photo_url
-                                  const hasVideo = !!currentClass.batch_video_url
-                                  const isBatchPhotoLandscape = batchClassPhotoLandscape[currentClass.id] ?? false
-                                  // "Layar penuh" hanya untuk foto (request: jangan buka video kalau foto belum ada)
-                                  const canOpenPhotoViewer = hasPhoto
+                            <div className={mediaSectionCollapsed ? "mb-8" : "mb-14"}>
+                                <button
+                                  type="button"
+                                  onClick={() => setMediaSectionCollapsed(!mediaSectionCollapsed)}
+                                  className={`flex items-center gap-4 hover:opacity-70 transition-all active:scale-95 group ${mediaSectionCollapsed ? 'mb-4' : 'mb-6'}`}
+                                  title={mediaSectionCollapsed ? 'Tampilkan Media' : 'Sembunyikan Media'}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-2 h-8 bg-indigo-500 dark:bg-indigo-600 rounded-full border-2 border-black dark:border-slate-700 shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b]"></div>
+                                    <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-[0.2em]">Foto &amp; Video Kelas</h3>
+                                  </div>
+                                  <div className="w-7 h-7 rounded-lg bg-white dark:bg-slate-800 border-2 border-black dark:border-slate-700 shadow-[1px_1px_0_0_#000] dark:shadow-[1px_1px_0_0_#334155] flex items-center justify-center flex-shrink-0">
+                                    {mediaSectionCollapsed ? (
+                                      <ChevronDown className="w-3.5 h-3.5 text-indigo-500" strokeWidth={3} />
+                                    ) : (
+                                      <ChevronUp className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" strokeWidth={3} />
+                                    )}
+                                  </div>
+                                </button>
+                              
+                              {!mediaSectionCollapsed && (
+                                <div className="relative animate-in fade-in slide-in-from-top-4 duration-300">
+                                  {(() => {
+                                    const hasPhoto = !!currentClass.batch_photo_url
+                                    const hasVideo = !!currentClass.batch_video_url
+                                    const isBatchPhotoLandscape = batchClassPhotoLandscape[currentClass.id] ?? false
+                                    // "Layar penuh" hanya untuk foto (request: jangan buka video kalau foto belum ada)
+                                    const canOpenPhotoViewer = hasPhoto
 
-                                  const handlePrimaryClick = () => {
-                                    if (canOpenPhotoViewer) {
-                                      setViewingBatchMediaMode('photo')
-                                      setViewingBatchPhotoClass(currentClass)
+                                    const handlePrimaryClick = () => {
+                                      if (canOpenPhotoViewer) {
+                                        setViewingBatchMediaMode('photo')
+                                        setViewingBatchPhotoClass(currentClass)
+                                      }
+                                      else if (canManage) {
+                                        setUploadingBatchPhotoClassId(currentClass.id)
+                                        batchPhotoInputRef.current?.click()
+                                      }
                                     }
-                                    else if (canManage) {
-                                      setUploadingBatchPhotoClassId(currentClass.id)
-                                      batchPhotoInputRef.current?.click()
-                                    }
-                                  }
 
-                                  return (
-                                    <div className="w-full">
-                                      <div
-                                        className={`relative group aspect-[3/4] lg:max-w-md lg:mx-auto rounded-[40px] border-2 border-black dark:border-slate-700 overflow-hidden shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] transition-all duration-500 ${
-                                          (canOpenPhotoViewer || canManage) ? 'hover:shadow-none hover:translate-x-1 hover:translate-y-1 cursor-pointer' : ''
-                                        } ${hasPhoto ? 'bg-slate-100 dark:bg-slate-800' : 'bg-slate-50/50 dark:bg-slate-900/10 border-dashed'}`}
-                                        onClick={handlePrimaryClick}
-                                      >
-                                      {hasPhoto ? (
-                                        <img
-                                          src={currentClass.batch_photo_url!}
-                                          alt={`Foto kelas ${currentClass.name}`}
-                                          className={`w-full h-full transition-transform duration-700 group-hover:scale-105 ${isBatchPhotoLandscape ? 'object-contain' : 'object-cover'}`}
-                                          onLoad={(e) => {
-                                            const img = e.currentTarget
-                                            setBatchClassPhotoLandscape((prev) => ({
-                                              ...prev,
-                                              [currentClass.id]: img.naturalWidth > img.naturalHeight,
-                                            }))
-                                          }}
-                                        />
-                                      ) : (
-                                        <div className="w-full h-full flex flex-col items-center justify-center px-10 text-center">
-                                          <div className="relative mb-6">
-                                            <div className="absolute inset-0 bg-indigo-500/10 blur-2xl rounded-full scale-110 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                                            <div className="relative w-20 h-20 rounded-[28px] bg-white dark:bg-slate-800 border-2 border-black dark:border-slate-700 shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] flex items-center justify-center transform group-hover:-rotate-6 transition-transform duration-500">
-                                              <ImageIcon className="w-10 h-10 text-slate-300 dark:text-slate-600 group-hover:text-indigo-400 transition-colors" strokeWidth={1.5} />
-                                            </div>
-                                          </div>
-                                          <span className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight leading-tight">
-                                            {canManage ? 'Upload Foto Kelas' : 'Media Kelas Belum Tersedia'}
-                                          </span>
-                                          {!canManage && (
-                                            <p className="text-[10px] font-black text-slate-400 dark:text-slate-600 mt-4 uppercase tracking-widest leading-relaxed">
-                                              Admin akan mengunggah foto &amp; video kelas segera
-                                            </p>
-                                          )}
-                                          {!canManage && hasVideo && (
-                                            <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 mt-3 uppercase tracking-widest leading-relaxed">
-                                              Video sudah tersedia (foto belum)
-                                            </p>
-                                          )}
-                                        </div>
-                                      )}
-
-                                      {/* Video play button (separate, no autoplay in card) */}
-                                      {hasVideo && (
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.stopPropagation()
-                                            setViewingBatchMediaMode('video')
-                                            setViewingBatchPhotoClass(currentClass)
-                                          }}
-                                          className="absolute bottom-6 left-6 w-14 h-14 flex items-center justify-center bg-emerald-400 text-slate-900 rounded-2xl border-2 border-black dark:border-slate-700 shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] hover:bg-emerald-300 active:shadow-none active:translate-x-0.5 active:translate-y-0.5 transition-all"
-                                          title="Putar Video Kelas"
+                                    return (
+                                      <div className="w-full">
+                                        <div
+                                          className={`relative group aspect-[3/4] lg:max-w-md lg:mx-auto rounded-[40px] border-2 border-black dark:border-slate-700 overflow-hidden shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] transition-all duration-500 ${
+                                            (canOpenPhotoViewer || canManage) ? 'hover:shadow-none hover:translate-x-1 hover:translate-y-1 cursor-pointer' : ''
+                                          } ${hasPhoto ? 'bg-slate-100 dark:bg-slate-800' : 'bg-slate-50/50 dark:bg-slate-900/10 border-dashed'}`}
+                                          onClick={handlePrimaryClick}
                                         >
-                                          <Play className="w-6 h-6 fill-current" strokeWidth={3} />
-                                        </button>
-                                      )}
-                                      </div>
+                                        {hasPhoto ? (
+                                          <img
+                                            src={currentClass.batch_photo_url!}
+                                            alt={`Foto kelas ${currentClass.name}`}
+                                            className={`w-full h-full transition-transform duration-700 group-hover:scale-105 ${isBatchPhotoLandscape ? 'object-contain' : 'object-cover'}`}
+                                            onLoad={(e) => {
+                                              const img = e.currentTarget
+                                              setBatchClassPhotoLandscape((prev) => ({
+                                                ...prev,
+                                                [currentClass.id]: img.naturalWidth > img.naturalHeight,
+                                              }))
+                                            }}
+                                          />
+                                        ) : (
+                                          <div className="w-full h-full flex flex-col items-center justify-center px-10 text-center">
+                                            <div className="relative mb-6">
+                                              <div className="absolute inset-0 bg-indigo-500/10 blur-2xl rounded-full scale-110 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                                              <div className="relative w-20 h-20 rounded-[28px] bg-white dark:bg-slate-800 border-2 border-black dark:border-slate-700 shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] flex items-center justify-center transform group-hover:-rotate-6 transition-transform duration-500">
+                                                <ImageIcon className="w-10 h-10 text-slate-300 dark:text-slate-600 group-hover:text-indigo-400 transition-colors" strokeWidth={1.5} />
+                                              </div>
+                                            </div>
+                                            <span className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight leading-tight">
+                                              {canManage ? 'Upload Foto Kelas' : 'Media Kelas Belum Tersedia'}
+                                            </span>
+                                            {!canManage && (
+                                              <p className="text-[10px] font-black text-slate-400 dark:text-slate-600 mt-4 uppercase tracking-widest leading-relaxed">
+                                                Admin akan mengunggah foto &amp; video kelas segera
+                                              </p>
+                                            )}
+                                            {!canManage && hasVideo && (
+                                              <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 mt-3 uppercase tracking-widest leading-relaxed">
+                                                Video sudah tersedia (foto belum)
+                                              </p>
+                                            )}
+                                          </div>
+                                        )}
 
-                                      {/* Controls moved below card (clean UI) */}
-                                      {canManage && (
-                                        <div className="mt-4 lg:max-w-md lg:mx-auto grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                          {hasPhoto ? (
-                                            <button
-                                              type="button"
-                                              onClick={() => {
-                                                setDeleteBatchMediaConfirm({
-                                                  classId: currentClass.id,
-                                                  className: currentClass.name,
-                                                  type: 'photo',
-                                                })
-                                              }}
-                                              className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border-2 border-black dark:border-slate-700 font-black text-xs uppercase tracking-widest shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] transition-all bg-red-500 text-white hover:bg-red-600 active:shadow-none active:translate-x-0.5 active:translate-y-0.5"
-                                              title="Hapus Foto Kelas"
-                                            >
-                                              <Trash2 className="w-4 h-4" strokeWidth={3} />
-                                              <span>Hapus Foto</span>
-                                            </button>
-                                          ) : (
-                                            <button
-                                              type="button"
-                                              onClick={() => {
-                                                setUploadingBatchPhotoClassId(currentClass.id)
-                                                batchPhotoInputRef.current?.click()
-                                              }}
-                                              className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border-2 border-black dark:border-slate-700 font-black text-xs uppercase tracking-widest shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] transition-all bg-indigo-500 text-white hover:bg-indigo-600 active:shadow-none active:translate-x-0.5 active:translate-y-0.5"
-                                              title="Upload Foto Kelas"
-                                            >
-                                              <span>Upload Foto</span>
-                                            </button>
-                                          )}
-
-                                          {hasVideo ? (
-                                            <button
-                                              type="button"
-                                              onClick={() => {
-                                                setDeleteBatchMediaConfirm({
-                                                  classId: currentClass.id,
-                                                  className: currentClass.name,
-                                                  type: 'video',
-                                                })
-                                              }}
-                                              className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border-2 border-black dark:border-slate-700 font-black text-xs uppercase tracking-widest shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] transition-all bg-slate-900 text-white hover:bg-black active:shadow-none active:translate-x-0.5 active:translate-y-0.5"
-                                              title="Hapus Video Kelas"
-                                            >
-                                              <Trash2 className="w-4 h-4" strokeWidth={3} />
-                                              <span>Hapus Video</span>
-                                            </button>
-                                          ) : (
-                                            <button
-                                              type="button"
-                                              onClick={() => {
-                                                setUploadingBatchVideoClassId(currentClass.id)
-                                                batchVideoInputRef.current?.click()
-                                              }}
-                                              className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border-2 border-black dark:border-slate-700 font-black text-xs uppercase tracking-widest shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] transition-all bg-blue-500 text-white hover:bg-blue-600 active:shadow-none active:translate-x-0.5 active:translate-y-0.5"
-                                              title="Upload Video Kelas"
-                                            >
-                                              <span>Upload Video</span>
-                                            </button>
-                                          )}
+                                        {/* Video play button (separate, no autoplay in card) */}
+                                        {hasVideo && (
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              setViewingBatchMediaMode('video')
+                                              setViewingBatchPhotoClass(currentClass)
+                                            }}
+                                            className="absolute bottom-6 left-6 w-14 h-14 flex items-center justify-center bg-emerald-400 text-slate-900 rounded-2xl border-2 border-black dark:border-slate-700 shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] hover:bg-emerald-300 active:shadow-none active:translate-x-0.5 active:translate-y-0.5 transition-all"
+                                            title="Putar Video Kelas"
+                                          >
+                                            <Play className="w-6 h-6 fill-current" strokeWidth={3} />
+                                          </button>
+                                        )}
                                         </div>
-                                      )}
-                                    </div>
-                                  )
-                                })()}
-                              </div>
+
+                                        {/* Controls moved below card (clean UI) */}
+                                        {canManage && (
+                                          <div className="mt-4 lg:max-w-md lg:mx-auto grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            {hasPhoto ? (
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  setDeleteBatchMediaConfirm({
+                                                    classId: currentClass.id,
+                                                    className: currentClass.name,
+                                                    type: 'photo',
+                                                  })
+                                                }}
+                                                className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border-2 border-black dark:border-slate-700 font-black text-xs uppercase tracking-widest shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] transition-all bg-red-500 text-white hover:bg-red-600 active:shadow-none active:translate-x-0.5 active:translate-y-0.5"
+                                              >
+                                                <Trash2 className="w-4 h-4" /> Hapus Foto
+                                              </button>
+                                            ) : (
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  setUploadingBatchPhotoClassId(currentClass.id)
+                                                  batchPhotoInputRef.current?.click()
+                                                }}
+                                                className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border-2 border-black dark:border-slate-700 font-black text-xs uppercase tracking-widest shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] transition-all bg-amber-400 text-slate-900 hover:bg-amber-500 active:shadow-none active:translate-x-0.5 active:translate-y-0.5"
+                                              >
+                                                <ImagePlus className="w-4 h-4" /> Upload Foto
+                                              </button>
+                                            )}
+
+                                            {hasVideo ? (
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  setDeleteBatchMediaConfirm({
+                                                    classId: currentClass.id,
+                                                    className: currentClass.name,
+                                                    type: 'video',
+                                                  })
+                                                }}
+                                                className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border-2 border-black dark:border-slate-700 font-black text-xs uppercase tracking-widest shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] transition-all bg-red-500 text-white hover:bg-red-600 active:shadow-none active:translate-x-0.5 active:translate-y-0.5"
+                                              >
+                                                <Trash2 className="w-4 h-4" /> Hapus Video
+                                              </button>
+                                            ) : (
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  setUploadingBatchVideoClassId(currentClass.id)
+                                                  batchVideoInputRef.current?.click()
+                                                }}
+                                                className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border-2 border-black dark:border-slate-700 font-black text-xs uppercase tracking-widest shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] transition-all bg-indigo-500 text-white hover:bg-indigo-600 active:shadow-none active:translate-x-0.5 active:translate-y-0.5"
+                                              >
+                                                <Video className="w-4 h-4" /> Upload Video
+                                              </button>
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )
+                                  })()}
+                                </div>
+                              )}
                             </div>
 
-                            {/* Members Grid/List */}
                             {/* Members Grid/List */}
                             <div className="flex items-center gap-3 mb-8">
                               <div className="w-2 h-8 bg-amber-400 dark:bg-amber-600 rounded-full border-2 border-black dark:border-slate-700 shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b]"></div>
