@@ -53,25 +53,25 @@ export default function AdminAlbumsPage() {
       <button
         type="button"
         onClick={() => setTab('mine')}
-        className={`relative z-10 flex-1 md:flex-none min-w-0 flex items-center justify-center gap-1.5 md:gap-2 px-3 py-1.5 md:px-5 md:py-2 rounded-xl text-[10px] md:text-sm font-bold transition-all duration-200 ${
+        className={`relative z-10 flex flex-1 md:flex-none min-w-0 items-center justify-center gap-1.5 md:gap-2 px-2 py-1.5 md:px-5 md:py-2 rounded-xl text-[11px] md:text-sm font-bold transition-all duration-200 ${
           activeTab === 'mine'
             ? 'text-slate-900'
             : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
         }`}
       >
-        <User className="w-3.5 h-3.5 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
+        <User className="hidden md:inline-block w-3.5 h-3.5 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
         <span className="truncate">Album Saya</span>
       </button>
       <button
         type="button"
         onClick={() => setTab('manage')}
-        className={`relative z-10 flex-1 md:flex-none min-w-0 flex items-center justify-center gap-1.5 md:gap-2 px-3 py-1.5 md:px-5 md:py-2 rounded-xl text-[10px] md:text-sm font-bold transition-all duration-200 ${
+        className={`relative z-10 flex flex-1 md:flex-none min-w-0 items-center justify-center gap-1.5 md:gap-2 px-2 py-1.5 md:px-5 md:py-2 rounded-xl text-[11px] md:text-sm font-bold transition-all duration-200 ${
           activeTab === 'manage'
             ? 'text-slate-900'
             : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
         }`}
       >
-        <Search className="w-3.5 h-3.5 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
+        <Search className="hidden md:inline-block w-3.5 h-3.5 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
         <span className="truncate">Manajemen</span>
       </button>
     </div>
@@ -90,9 +90,9 @@ export default function AdminAlbumsPage() {
   )
 
   return (
-    <div className="max-w-6xl pb-12">
+    <div className="max-w-6xl mx-auto pb-12">
       {/* Header Title & Subtitle */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-6 px-4 md:px-0">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-6">
         <div className="space-y-1">
           <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white leading-none">
             {activeTab === 'mine' ? 'Album Saya' : 'Manajemen Album'}

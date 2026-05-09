@@ -981,7 +981,7 @@ export default function AlbumsView({ variant, initialData, fetchUrl = '/api/albu
       )}
 
       {hideHeader && (
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6 px-4 md:px-0">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
           <div className="w-full md:w-auto flex justify-center md:justify-start">
             {leftElement}
           </div>
@@ -1072,7 +1072,7 @@ export default function AlbumsView({ variant, initialData, fetchUrl = '/api/albu
         {/* Search Form */}
         {showSearch && (
           <div className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-900 dark:border-slate-700 rounded-2xl animate-in slide-in-from-top-2 duration-200 shadow-inner max-w-2xl mx-auto w-full">
-            <Search className="w-5 h-5 text-slate-400 shrink-0" />
+            <Search className="w-4 h-4 md:w-5 md:h-5 text-slate-400 shrink-0" />
             <input
               type="text"
               autoFocus
@@ -1082,7 +1082,7 @@ export default function AlbumsView({ variant, initialData, fetchUrl = '/api/albu
                 setCurrentPage(1)
               }}
               placeholder="Cari nama project, sekolah, atau paket..."
-              className="flex-1 min-w-0 bg-transparent text-base font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none"
+              className="flex-1 min-w-0 bg-transparent text-[11px] md:text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none"
             />
           </div>
         )}
@@ -1141,7 +1141,7 @@ export default function AlbumsView({ variant, initialData, fetchUrl = '/api/albu
             </div>
           </>
         ) : (
-          <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
               <div key={i} className="relative border-2 border-slate-900 dark:border-slate-700 rounded-3xl p-4 sm:p-5 flex flex-col h-full bg-white dark:bg-slate-900 animate-pulse min-h-[120px] shadow-[2px_2px_0_0_#0f172a] dark:shadow-[2px_2px_0_0_#334155]">
                 <div className="aspect-[4/3] w-full bg-slate-100 dark:bg-slate-800 border-2 border-slate-900 dark:border-slate-700 rounded-2xl mb-4 overflow-hidden" />

@@ -334,8 +334,8 @@ export default function AdminPage() {
   ]
 
   return (
-    <div className="max-w-6xl pb-12">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-6 px-4 md:px-0">
+    <div className="max-w-6xl mx-auto pb-12">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-6">
         <div className="space-y-1">
           <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white tracking-tight leading-none">
             Admin Dashboard
@@ -352,10 +352,10 @@ export default function AdminPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-8 px-4 md:px-0">
+      <div className="grid grid-cols-4 gap-1.5 sm:gap-4 md:gap-6 mb-8">
         {loading && !stats ? (
           [1, 2, 3, 4].map((i) => (
-            <div key={`stat-skeleton-${i}`} className="bg-white dark:bg-slate-800 border-2 border-slate-900 dark:border-slate-700 rounded-2xl p-5 md:p-6 animate-pulse shadow-[2px_2px_0_0_#0f172a]">
+            <div key={`stat-skeleton-${i}`} className="bg-white dark:bg-slate-800 border-2 border-slate-900 dark:border-slate-700 rounded-xl md:rounded-2xl p-2 md:p-6 animate-pulse shadow-sm md:shadow-[2px_2px_0_0_#0f172a]">
               <div className="h-3 w-16 bg-slate-100 rounded mb-3" />
               <div className="h-8 w-24 bg-slate-50 rounded" />
             </div>
@@ -366,7 +366,7 @@ export default function AdminPage() {
               { id: 'total', label: 'Total User', value: stats?.totalUsers.toLocaleString() ?? '0', color: 'bg-sky-500 dark:bg-slate-800', shadow: 'shadow-[2px_2px_0_0_#0f172a] dark:shadow-[2px_2px_0_0_#334155]', text: 'text-slate-900 dark:text-white', active: roleFilter === null && sortFilter === null && daysFilter === null },
               { id: 'admin', label: 'Admin', value: stats?.totalAdmins.toLocaleString() ?? '0', color: 'bg-rose-300 dark:bg-slate-800', shadow: 'shadow-[2px_2px_0_0_#0f172a] dark:shadow-[2px_2px_0_0_#334155]', text: 'text-slate-900 dark:text-white', active: roleFilter === 'admin' },
               { id: 'credits', label: 'Total Credit', value: stats?.totalCredits.toLocaleString() ?? '0', color: 'bg-amber-300 dark:bg-slate-800', shadow: 'shadow-[2px_2px_0_0_#0f172a] dark:shadow-[2px_2px_0_0_#334155]', text: 'text-slate-900 dark:text-white', active: sortFilter === 'credits' },
-              { id: 'new', label: 'New User (7d)', value: stats?.newUsers7d.toLocaleString() ?? '0', color: 'bg-emerald-300 dark:bg-slate-800', shadow: 'shadow-[2px_2px_0_0_#0f172a] dark:shadow-[2px_2px_0_0_#334155]', text: 'text-slate-900 dark:text-white', active: daysFilter === 7 }
+              { id: 'new', label: 'New User', value: stats?.newUsers7d.toLocaleString() ?? '0', color: 'bg-emerald-300 dark:bg-slate-800', shadow: 'shadow-[2px_2px_0_0_#0f172a] dark:shadow-[2px_2px_0_0_#334155]', text: 'text-slate-900 dark:text-white', active: daysFilter === 7 }
             ].map((sc) => (
               <div 
                 key={sc.label} 
@@ -393,10 +393,10 @@ export default function AdminPage() {
                     setPage(1)
                   }
                 }}
-                className={`${sc.color} border-2 border-slate-900 dark:border-slate-700 rounded-[24px] p-5 md:p-6 ${sc.shadow} cursor-pointer hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none ${sc.active ? 'ring-4 ring-indigo-500 ring-offset-2 dark:ring-offset-slate-900' : ''} transition-all`}
+                className={`${sc.color} border-2 border-slate-900 dark:border-slate-700 rounded-xl md:rounded-[24px] p-2 md:p-6 ${sc.shadow} cursor-pointer hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none ${sc.active ? 'ring-2 md:ring-4 ring-indigo-500 ring-offset-1 md:ring-offset-2 dark:ring-offset-slate-900' : ''} transition-all flex flex-col items-center justify-center text-center min-w-0`}
               >
-                <p className={`text-[10px] md:text-xs font-black uppercase tracking-widest mb-1.5 md:mb-2 ${sc.text}`}>{sc.label}</p>
-                <p className={`text-2xl md:text-4xl font-black ${sc.text}`}>
+                <p className={`text-[9px] md:text-xs font-black uppercase tracking-tighter md:tracking-widest mb-0.5 md:mb-2 ${sc.text} truncate`}>{sc.label}</p>
+                <p className={`text-base md:text-4xl font-black ${sc.text} truncate`}>
                   {sc.value}
                 </p>
               </div>
@@ -405,7 +405,7 @@ export default function AdminPage() {
         )}
       </div>
 
-      <div className="bg-white dark:bg-slate-900 border-2 border-slate-900 dark:border-slate-700 rounded-[24px] md:rounded-[32px] overflow-hidden shadow-[2px_2px_0_0_#0f172a] dark:shadow-[2px_2px_0_0_#334155] md:shadow-[2px_2px_0_0_#0f172a] dark:md:shadow-[2px_2px_0_0_#0f172a] mx-4 md:mx-0">
+      <div className="bg-white dark:bg-slate-900 border-2 border-slate-900 dark:border-slate-700 rounded-[24px] md:rounded-[32px] overflow-hidden shadow-[2px_2px_0_0_#0f172a] dark:shadow-[2px_2px_0_0_#334155] md:shadow-[2px_2px_0_0_#0f172a] dark:md:shadow-[2px_2px_0_0_#0f172a]">
         <div className="px-5 py-4 md:px-8 md:py-6 border-b-4 border-slate-900 dark:border-slate-700 flex items-center justify-between gap-4 flex-wrap bg-sky-500 dark:bg-slate-800">
           <div className="flex flex-col gap-1">
             <h2 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white leading-none">
@@ -454,7 +454,9 @@ export default function AdminPage() {
             <div key={u.id} className="bg-white dark:bg-slate-800 border-2 border-slate-900 dark:border-slate-700 rounded-2xl p-4 space-y-4 shadow-[2px_2px_0_0_#0f172a] dark:shadow-[2px_2px_0_0_#334155] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all">
               <div className="flex justify-between items-start gap-2">
                 <div className="min-w-0">
-                  <p className="text-sm font-black text-slate-900 dark:text-white truncate">{u.full_name || 'No Name'}</p>
+                  <p className="text-sm font-black text-slate-900 dark:text-white truncate">
+                    {u.full_name || 'No Name'} {currentAdminId === u.id && <span className="text-indigo-500 font-bold ml-1 text-[10px]">(Anda)</span>}
+                  </p>
                   <p className="text-[10px] font-bold text-slate-400 dark:text-slate-300 truncate">{u.email || '-'}</p>
                 </div>
                 <div className="flex flex-col items-end gap-1.5 shrink-0">
@@ -515,7 +517,7 @@ export default function AdminPage() {
                     <button
                       onClick={() => handleSuspendUser(u.id, !!u.is_suspended)}
                       disabled={savingId === u.id}
-                      className={`col-span-2 px-3 py-2 border-2 border-slate-900 dark:border-slate-700 rounded-xl text-[10px] font-black uppercase transition-colors disabled:opacity-50 ${u.is_suspended ? 'bg-emerald-300 dark:bg-emerald-700 text-slate-900 dark:text-white' : 'bg-amber-300 dark:bg-amber-700 text-slate-900 dark:text-white'}`}
+                      className={`px-3 py-2 border-2 border-slate-900 dark:border-slate-700 rounded-xl text-[10px] font-black uppercase transition-colors disabled:opacity-50 ${u.is_suspended ? 'bg-emerald-300 dark:bg-emerald-700 text-slate-900 dark:text-white' : 'bg-amber-300 dark:bg-amber-700 text-slate-900 dark:text-white'}`}
                     >
                       {u.is_suspended ? 'Unsuspend' : 'Suspend'}
                     </button>
@@ -564,7 +566,9 @@ export default function AdminPage() {
               {!loading && stats && stats.latestUsers.length > 0 && stats.latestUsers.map((u) => (
                 <tr key={u.id} className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group">
                   <td className="px-5 py-4">
-                    <p className="text-sm font-black text-slate-900 dark:text-white">{u.full_name || '-'}</p>
+                    <p className="text-sm font-black text-slate-900 dark:text-white">
+                      {u.full_name || '-'} {currentAdminId === u.id && <span className="text-indigo-500 font-bold ml-1 text-[10px]">(Anda)</span>}
+                    </p>
                   </td>
                   <td className="px-5 py-4">
                     <p className="text-sm font-bold text-slate-400">{u.email || '-'}</p>
@@ -648,7 +652,7 @@ export default function AdminPage() {
         </div>
       </div>
       {stats && totalPages > 1 && (
-        <div className="mt-8 flex items-center justify-between px-4 md:px-0 pb-12">
+        <div className="mt-8 flex items-center justify-between pb-12">
           <span className="text-xs font-black text-slate-400 uppercase tracking-widest">
             Page {currentPage} of {totalPages}
           </span>

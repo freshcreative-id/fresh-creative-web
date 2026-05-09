@@ -460,7 +460,7 @@ export default function AdminShowcasePage() {
   }
 
   return (
-    <div className="max-w-6xl pb-12">
+    <div className="max-w-6xl mx-auto pb-12">
       {statusBanner && (
         <div className={`fixed bottom-4 md:bottom-8 left-1/2 -translate-x-1/2 z-[200] max-w-[90%] md:max-w-md w-full px-4 py-3 md:px-6 md:py-4 rounded-2xl md:rounded-2xl border-2 border-slate-900 dark:border-slate-700 shadow-[#64748b] dark:shadow-[2px_2px_0_0_#1e293b] md:shadow-[2px_2px_0_0_#334155] dark:md:shadow-[2px_2px_0_0_#334155] transform transition-all animate-bounce-subtle ${statusBanner.startsWith('error:') ? 'bg-red-400 dark:bg-red-600 text-white' : statusBanner.endsWith('-success') ? 'bg-emerald-400 dark:bg-emerald-600 text-slate-900 dark:text-white' : 'bg-amber-300 dark:bg-amber-600 text-slate-900 dark:text-white'}`}>
           <div className="flex items-center gap-2 md:gap-3 font-bold text-xs md:text-sm">
@@ -476,7 +476,7 @@ export default function AdminShowcasePage() {
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-6 px-4 md:px-0">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-6">
         <div className="space-y-1">
           <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
             View Settings
@@ -501,7 +501,7 @@ export default function AdminShowcasePage() {
       </div>
 
       {/* Tab Switcher — mobile: satu baris penuh; tombol portfolio di bawah (mobile) supaya tab tidak naik-turun */}
-      <div className="mb-8 px-4 md:px-0">
+      <div className="mb-8">
         <div className="relative flex w-full md:w-fit items-center gap-1 p-1 bg-white dark:bg-slate-800 rounded-2xl border-2 border-slate-900 dark:border-slate-700 shadow-[2px_2px_0_0_#334155] dark:shadow-[2px_2px_0_0_#1e293b]">
           <div
             className="absolute top-1 bottom-1 rounded-xl bg-violet-400 transition-all duration-300 ease-out"
@@ -521,15 +521,15 @@ export default function AdminShowcasePage() {
               key={tab}
               type="button"
               onClick={() => handleTabClick(tab)}
-              className={`relative z-10 flex flex-1 md:flex-none min-w-0 items-center justify-center gap-1.5 md:gap-2 px-3 py-1.5 md:px-5 md:py-2 rounded-xl text-[10px] md:text-sm font-bold transition-all duration-200 ${
+              className={`relative z-10 flex flex-1 md:flex-none min-w-0 items-center justify-center gap-1.5 md:gap-2 px-2 py-1.5 md:px-5 md:py-2 rounded-xl text-[11px] md:text-sm font-bold transition-all duration-200 ${
                 activeTab === tab
                   ? 'text-slate-900'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
               }`}
             >
-              {tab === 'ebook' && <BookOpen className={cn("w-3.5 h-3.5 md:w-5 md:h-5 shrink-0", activeTab === tab ? "text-slate-900" : "")} strokeWidth={2.5} />}
-              {tab === 'phygital' && <MessageCircle className={cn("w-3.5 h-3.5 md:w-5 md:h-5 shrink-0", activeTab === tab ? "text-slate-900" : "")} strokeWidth={2.5} />}
-              {tab === 'portfolio' && <ImageIcon className={cn("w-3.5 h-3.5 md:w-5 md:h-5 shrink-0", activeTab === tab ? "text-slate-900" : "")} strokeWidth={2.5} />}
+              {tab === 'ebook' && <BookOpen className={cn("hidden md:inline-block w-3.5 h-3.5 md:w-5 md:h-5 shrink-0", activeTab === tab ? "text-slate-900" : "")} strokeWidth={2.5} />}
+              {tab === 'phygital' && <MessageCircle className={cn("hidden md:inline-block w-3.5 h-3.5 md:w-5 md:h-5 shrink-0", activeTab === tab ? "text-slate-900" : "")} strokeWidth={2.5} />}
+              {tab === 'portfolio' && <ImageIcon className={cn("hidden md:inline-block w-3.5 h-3.5 md:w-5 md:h-5 shrink-0", activeTab === tab ? "text-slate-900" : "")} strokeWidth={2.5} />}
               <span className="truncate">{tab === 'ebook' ? 'Ebook' : tab === 'phygital' ? 'Contact' : 'Portfolio'}</span>
             </button>
           ))}

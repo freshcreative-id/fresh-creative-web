@@ -785,7 +785,8 @@ export default function PricingEditPage() {
           </div>
         </div>
       )}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-6 px-4 md:px-0">
+      <div className="max-w-6xl mx-auto pb-12">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-6">
           <div className="space-y-1">
             <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
               {activeTab === 'yearbook' ? 'Pricing Yearbook' : 'Pricing AI'}
@@ -806,7 +807,7 @@ export default function PricingEditPage() {
         </div>
 
       {/* Tabs */}
-      <div className="mb-8 px-4 md:px-0">
+      <div className="mb-8">
         <div className="relative flex w-full md:w-fit items-center gap-1 p-1 bg-white dark:bg-slate-800 rounded-2xl border-2 border-slate-900 dark:border-slate-700 shadow-[2px_2px_0_0_#334155] dark:shadow-[2px_2px_0_0_#1e293b]">
           <div
             className="absolute top-1 bottom-1 rounded-xl bg-violet-400 transition-all duration-300 ease-out"
@@ -818,13 +819,13 @@ export default function PricingEditPage() {
           <button
             type="button"
             onClick={() => switchTab('yearbook')}
-            className={`relative z-10 flex flex-1 md:flex-none min-w-0 items-center justify-center gap-1.5 md:gap-2 px-3 py-1.5 md:px-5 md:py-2 rounded-xl text-[10px] md:text-sm font-bold transition-all duration-200 ${
+            className={`relative z-10 flex flex-1 md:flex-none min-w-0 items-center justify-center gap-1.5 md:gap-2 px-2 py-1.5 md:px-5 md:py-2 rounded-xl text-[11px] md:text-sm font-bold transition-all duration-200 ${
               activeTab === 'yearbook'
                 ? 'text-slate-900'
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
             }`}
           >
-            <Layout className="w-3.5 h-3.5 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
+            <Layout className="hidden md:inline-block w-3.5 h-3.5 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
             <span className="truncate">Yearbook</span>
             <span className="flex items-center justify-center h-4 md:h-5 px-1 md:px-1.5 bg-slate-900 dark:bg-slate-700 text-white text-[9px] md:text-xs rounded-md md:rounded-lg border-2 border-slate-900 dark:border-slate-600 ml-1">
               {packages.length}
@@ -833,13 +834,13 @@ export default function PricingEditPage() {
           <button
             type="button"
             onClick={() => switchTab('ai')}
-            className={`relative z-10 flex flex-1 md:flex-none min-w-0 items-center justify-center gap-1.5 md:gap-2 px-3 py-1.5 md:px-5 md:py-2 rounded-xl text-[10px] md:text-sm font-bold transition-all duration-200 ${
+            className={`relative z-10 flex flex-1 md:flex-none min-w-0 items-center justify-center gap-1.5 md:gap-2 px-2 py-1.5 md:px-5 md:py-2 rounded-xl text-[11px] md:text-sm font-bold transition-all duration-200 ${
               activeTab === 'ai'
                 ? 'text-slate-900'
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
             }`}
           >
-            <Zap className="w-3.5 h-3.5 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
+            <Zap className="hidden md:inline-block w-3.5 h-3.5 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
             <span className="truncate">Unlock & Gen</span>
             <span className="flex items-center justify-center h-4 md:h-5 px-1 md:px-1.5 bg-slate-900 dark:bg-slate-700 text-white text-[9px] md:text-xs rounded-md md:rounded-lg border-2 border-slate-900 dark:border-slate-600 ml-1">
               {aiPricing.length}
@@ -859,7 +860,7 @@ export default function PricingEditPage() {
 
       {activeTab === 'yearbook' ? (
         loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 px-4 md:px-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
             {[1, 2, 3, 4].map((i) => (
               <div
                 key={i}
@@ -891,7 +892,7 @@ export default function PricingEditPage() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 px-4 md:px-0 pb-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 pb-12">
             {packages.map((pkg) => {
               const addonsList = pkg.features.map((f) => {
                 try {
@@ -981,7 +982,7 @@ export default function PricingEditPage() {
           </div>
         )
       ) : loadingAi ? (
-        <div className="space-y-4 px-4 md:px-0">
+        <div className="space-y-4">
           {[1, 2, 3].map((i) => (
             <div
               key={i}
@@ -1004,7 +1005,7 @@ export default function PricingEditPage() {
           <p className="text-xs text-slate-400 dark:text-slate-400 font-medium">Jalankan migration SQL terlebih dahulu untuk mengisi data pricing AI.</p>
         </div>
       ) : (
-        <div className="space-y-3 px-4 md:px-0 pb-12">
+        <div className="space-y-3 pb-12">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {aiPricing.map((item) => {
               const isFlipbook = item.feature_slug === 'flipbook_unlock'
@@ -1053,7 +1054,8 @@ export default function PricingEditPage() {
         </div>
       )}
     </div>
-  )
+  </div>
+)
 }
 
 

@@ -200,8 +200,8 @@ export default function AdminRiwayatPage() {
         </div>
       )}
 
-    <div className="max-w-6xl pb-12">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-6 px-4 md:px-0">
+    <div className="max-w-6xl mx-auto pb-12">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-6">
         <div className="space-y-1">
           <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white tracking-tight leading-none">
             Riwayat Transaksi
@@ -212,7 +212,7 @@ export default function AdminRiwayatPage() {
         </div>
       </div>
 
-      <div className="flex justify-center md:justify-start mb-4 sm:mb-6 px-4 md:px-0">
+      <div className="flex justify-center md:justify-start mb-4 sm:mb-6">
         <div className="relative flex w-full md:w-fit items-center gap-1 p-1 bg-white dark:bg-slate-800 rounded-2xl border-2 border-slate-900 dark:border-slate-700 shadow-[2px_2px_0_0_#334155] dark:shadow-[2px_2px_0_0_#1e293b]">
           <div
             className={`absolute top-1 bottom-1 rounded-xl bg-violet-400 transition-all duration-300 ease-out`}
@@ -225,18 +225,18 @@ export default function AdminRiwayatPage() {
           <button
             type="button"
             onClick={() => { setViewMode('mine'); setCurrentPage(1); }}
-            className={`relative z-10 flex-1 md:flex-none min-w-0 flex items-center justify-center gap-1.5 md:gap-2 px-3 py-1.5 md:px-5 md:py-2 rounded-xl text-[10px] md:text-sm font-bold transition-all duration-200 ${viewMode === 'mine' ? 'text-slate-900' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+            className={`relative z-10 flex flex-1 md:flex-none min-w-0 items-center justify-center gap-1.5 md:gap-2 px-2 py-1.5 md:px-5 md:py-2 rounded-xl text-[11px] md:text-sm font-bold transition-all duration-200 ${viewMode === 'mine' ? 'text-slate-900' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
           >
-            <User className="w-3.5 h-3.5 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
+            <User className="hidden md:inline-block w-3.5 h-3.5 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
             <span className="truncate">Riwayat Saya</span>
           </button>
           <button
             type="button"
             onClick={() => { setViewMode('all'); setCurrentPage(1); }}
-            className={`relative z-10 flex-1 md:flex-none min-w-0 flex items-center justify-center gap-1.5 md:gap-2 px-3 py-1.5 md:px-5 md:py-2 rounded-xl text-[10px] md:text-sm font-bold transition-all duration-200 ${viewMode === 'all' ? 'text-slate-900' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+            className={`relative z-10 flex flex-1 md:flex-none min-w-0 items-center justify-center gap-1.5 md:gap-2 px-2 py-1.5 md:px-5 md:py-2 rounded-xl text-[11px] md:text-sm font-bold transition-all duration-200 ${viewMode === 'all' ? 'text-slate-900' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
           >
-            <Users className="w-3.5 h-3.5 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
-            <span className="truncate">Riwayat Semua</span>
+            <Users className="hidden md:inline-block w-3.5 h-3.5 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
+            <span className="truncate">Semua Orang</span>
           </button>
         </div>
       </div>
@@ -244,13 +244,13 @@ export default function AdminRiwayatPage() {
       {viewMode === 'all' && (
         <div className="mb-8 relative max-w-2xl">
           <div className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-900 rounded-2xl shadow-inner group focus-within:bg-white dark:focus-within:bg-slate-900 transition-all">
-            <Search className="h-5 w-5 text-slate-400 group-focus-within:text-slate-900 transition-colors" strokeWidth={3} />
+            <Search className="h-4 w-4 md:h-5 md:w-5 text-slate-400 group-focus-within:text-slate-900 transition-colors" strokeWidth={3} />
             <input
               type="text"
               placeholder="Cari nama, email, atau ID transaksi..."
               value={searchQuery}
               onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-              className="w-full bg-transparent text-base font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none"
+              className="w-full bg-transparent text-[11px] md:text-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none"
             />
           </div>
         </div>
