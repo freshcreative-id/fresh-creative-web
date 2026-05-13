@@ -1,6 +1,8 @@
 import { Hono } from 'hono'
+import { getRole } from '../../lib/auth'
 import { getD1 } from '../../lib/edge-env'
 import { getCreditsFromD1, setCreditsInD1 } from '../../lib/credits'
+import { publishRealtimeEventFromContext } from '../../lib/realtime'
 import { AppEnv, requireAuthJwt } from '../../middleware'
 
 const creditsSyncInvoice = new Hono<AppEnv>()
@@ -13,12 +15,20 @@ creditsSyncInvoice.post('/', async (c) => {
     const user = c.get('user')
     if (!user?.id) return c.json({ error: 'Unauthorized' }, 401)
 
-    const { results: pendingRows } = await db
-      .prepare(
-        `SELECT id, external_id, package_id, amount FROM transactions WHERE user_id = ? AND status = 'PENDING'`
-      )
-      .bind(user.id)
-      .all<{ id: string; external_id: string; package_id: string | null; amount: number }>()
+    const isAdmin = (await getRole(c, user)) === 'admin'
+
+    const { results: pendingRows } = isAdmin
+      ? await db
+          .prepare(
+            `SELECT id, external_id, package_id, amount FROM transactions WHERE status = 'PENDING' LIMIT 400`
+          )
+          .all<{ id: string; external_id: string; package_id: string | null; amount: number }>()
+      : await db
+          .prepare(
+            `SELECT id, external_id, package_id, amount FROM transactions WHERE user_id = ? AND status = 'PENDING'`
+          )
+          .bind(user.id)
+          .all<{ id: string; external_id: string; package_id: string | null; amount: number }>()
 
     if (!pendingRows?.length) {
       return c.json({ synced: 0 })
@@ -48,6 +58,64 @@ creditsSyncInvoice.post('/', async (c) => {
         const specificChannel =
           inv?.payment_channel || inv?.bank_code || inv?.retail_outlet_name || inv?.ewallet_type
         const paymentMethod = (specificChannel || inv?.payment_method || null) as string | null
+
+        // Kadaluarsa / gagal di Xendit: sync ke DB bila webhook tidak jalan (localhost, URL salah, dll.)
+        if (invStatus === 'EXPIRED' || invStatus === 'FAILED') {
+          await db
+            .prepare(
+              `UPDATE transactions SET status = ?, payment_method = ?, updated_at = datetime('now') WHERE external_id = ?`
+            )
+            .bind(invStatus, paymentMethod, externalId)
+            .run()
+
+          if (externalId.startsWith('album_')) {
+            const match = externalId.match(/^album_(.+?)_user_/)
+            const aid = match?.[1]
+            if (aid) {
+              await db
+                .prepare(
+                  `UPDATE albums SET payment_url = NULL, updated_at = datetime('now') WHERE id = ? AND payment_url IS NOT NULL`
+                )
+                .bind(aid)
+                .run()
+            }
+          }
+
+          if (externalId.startsWith('member_')) {
+            const accessMatch = externalId.match(/^member_(.+?)_user_/)
+            const accessIdFromExt = accessMatch?.[1]
+            const txAccess = await db
+              .prepare(`SELECT access_id, album_id FROM transactions WHERE external_id = ?`)
+              .bind(externalId)
+              .first<{ access_id: string | null; album_id: string | null }>()
+            const accessId = txAccess?.access_id ?? accessIdFromExt
+            const albumId = txAccess?.album_id
+            if (accessId) {
+              await db
+                .prepare(
+                  `UPDATE album_class_access SET payment_status = 'unpaid', payment_transaction_id = NULL, updated_at = datetime('now') WHERE id = ? AND payment_status = 'pending'`
+                )
+                .bind(accessId)
+                .run()
+            }
+            if (albumId && accessId) {
+              void publishRealtimeEventFromContext(c, {
+                type: 'album.classAccess.updated',
+                channel: 'global',
+                payload: {
+                  path: `/api/albums/${albumId}/join-requests`,
+                  albumId,
+                  accessId,
+                  paymentStatus: 'unpaid',
+                },
+                ts: new Date().toISOString(),
+              })
+            }
+          }
+
+          synced++
+          continue
+        }
 
         if (invStatus !== 'PAID' && invStatus !== 'SETTLED') continue
 

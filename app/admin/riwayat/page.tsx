@@ -301,21 +301,31 @@ export default function AdminRiwayatPage() {
         </div>
       ) : (
         <div className="space-y-4 md:space-y-5 lg:space-y-6">
-          {paginatedTransactions.map((tx) => (
+          {paginatedTransactions.map((tx) => {
+            const st = tx.status.toUpperCase()
+            const isPaid = st === 'PAID' || st === 'SETTLED'
+            const isPending = st === 'PENDING'
+            const isExpired = st === 'EXPIRED'
+            return (
             <div
               key={tx.id}
               className="rounded-xl md:rounded-2xl border-2 border-black bg-white dark:bg-slate-900 p-4 sm:p-5 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-5 shadow-[2px_2px_0_0_#334155] md:shadow-[2px_2px_0_0_#334155] dark:shadow-[2px_2px_0_0_#1e293b] dark:md:shadow-[2px_2px_0_0_#1e293b] hover:translate-x-1 hover:translate-y-1 transition-all"
             >
               <div className="flex items-start sm:items-center gap-4 sm:gap-5">
                 <div
-                  className={`w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl border-2 border-black flex items-center justify-center shrink-0 shadow-[2px_2px_0_0_#334155] md:shadow-[2px_2px_0_0_#334155] ${tx.status === 'PAID' || tx.status === 'SETTLED'
-                    ? 'bg-emerald-300'
-                    : tx.status === 'PENDING'
-                      ? 'bg-orange-300'
-                      : 'bg-red-400'
+                  className={`w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl border-2 flex items-center justify-center shrink-0 ${isPaid
+                    ? 'border-black bg-emerald-300 shadow-[2px_2px_0_0_#334155] md:shadow-[2px_2px_0_0_#334155]'
+                    : isPending
+                      ? 'border-black bg-orange-300 shadow-[2px_2px_0_0_#334155] md:shadow-[2px_2px_0_0_#334155]'
+                      : isExpired
+                        ? 'border-black bg-rose-400 shadow-[2px_2px_0_0_#334155] md:shadow-[2px_2px_0_0_#334155] dark:border-black dark:bg-rose-900 dark:shadow-[2px_2px_0_0_#1e293b] dark:md:shadow-[2px_2px_0_0_#1e293b]'
+                      : 'border-black bg-red-400 shadow-[2px_2px_0_0_#334155] md:shadow-[2px_2px_0_0_#334155]'
                     }`}
                 >
-                  <CreditCard className="w-5 h-5 md:w-6 md:h-6 text-slate-900" strokeWidth={2.5} />
+                  <CreditCard
+                    className={`w-5 h-5 md:w-6 md:h-6 ${isExpired ? 'text-slate-900 dark:text-rose-100' : 'text-slate-900'}`}
+                    strokeWidth={2.5}
+                  />
                 </div>
                 <div className="space-y-1">
                   <h4 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-tight">
@@ -365,19 +375,21 @@ export default function AdminRiwayatPage() {
                   </span>
                   <div className="mt-1 flex md:justify-end">
                     <span
-                      className={`text-[9px] sm:text-[10px] font-bold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg border-2 border-slate-900 shadow-[2px_2px_0_0_#94a3b8] sm:shadow-[#64748b] uppercase tracking-widest ${tx.status === 'PAID' || tx.status === 'SETTLED'
-                        ? 'bg-emerald-300 text-slate-900'
-                        : tx.status === 'PENDING'
-                          ? 'bg-orange-300 text-slate-900'
-                          : 'bg-red-400 text-white'
+                      className={`text-[9px] sm:text-[10px] font-bold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg border-2 uppercase tracking-widest ${isPaid
+                        ? 'border-slate-900 bg-emerald-300 text-slate-900 shadow-[2px_2px_0_0_#94a3b8] sm:shadow-[#64748b]'
+                        : isPending
+                          ? 'border-slate-900 bg-orange-300 text-slate-900 shadow-[2px_2px_0_0_#94a3b8] sm:shadow-[#64748b]'
+                          : isExpired
+                            ? 'border-slate-900 bg-rose-400 text-slate-900 shadow-[2px_2px_0_0_#94a3b8] sm:shadow-[#64748b] dark:border-slate-900 dark:bg-rose-900 dark:text-rose-100 dark:shadow-[2px_2px_0_0_#475569] dark:sm:shadow-[#64748b]'
+                          : 'border-slate-900 bg-red-400 text-white shadow-[2px_2px_0_0_#94a3b8] sm:shadow-[#64748b]'
                         }`}
                     >
-                      {tx.status === 'PAID' || tx.status === 'SETTLED' ? 'SUCCESS' : tx.status}
+                      {isPaid ? 'SUCCESS' : isExpired ? 'EXPIRED' : tx.status}
                     </span>
                   </div>
                 </div>
 
-                {tx.invoice_url && tx.status === 'PENDING' && (
+                {tx.invoice_url && isPending && (
                   <button
                     type="button"
                     onClick={() => tx.invoice_url && setInvoicePopupUrl(tx.invoice_url)}
@@ -388,7 +400,7 @@ export default function AdminRiwayatPage() {
                   </button>
                 )}
 
-                {tx.invoice_url && (tx.status === 'PAID' || tx.status === 'SETTLED') && (
+                {tx.invoice_url && isPaid && (
                   <button
                     type="button"
                     onClick={() => generateAndPrintInvoice(tx)}
@@ -400,7 +412,8 @@ export default function AdminRiwayatPage() {
                 )}
               </div>
             </div>
-          ))}
+            )
+          })}
         </div>
       )}
 

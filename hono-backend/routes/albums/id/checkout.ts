@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { getRole } from '../../../lib/auth'
 import { getD1 } from '../../../lib/edge-env'
+import { getPublicAppUrl } from '../../../lib/public-url'
 import { AppEnv, requireAuthJwt } from '../../../middleware'
 import { getAuthUserFromContext } from '../../../lib/auth-user'
 
@@ -90,7 +91,16 @@ checkoutRoute.post('/', async (c) => {
     const xenditKey = (c.env as { XENDIT_SECRET_KEY?: string }).XENDIT_SECRET_KEY || ''
     if (!xenditKey) return c.json({ error: 'XENDIT_SECRET_KEY missing' }, 500)
 
-    const baseUrl = (c.env as { NEXT_PUBLIC_APP_URL?: string }).NEXT_PUBLIC_APP_URL || ''
+    const baseUrl = getPublicAppUrl(c)
+    if (!baseUrl) {
+      return c.json(
+        {
+          error:
+            'Could not determine app URL. Set NEXT_PUBLIC_APP_URL on the Worker or open checkout from the deployed site.',
+        },
+        500
+      )
+    }
     const isAdmin = (await getRole(c, user)) === 'admin'
     const redirectPath = isAdmin ? '/admin/riwayat' : '/user/riwayat'
 

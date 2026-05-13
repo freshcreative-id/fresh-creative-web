@@ -14,6 +14,7 @@ import { fetchWithAuth } from "@/lib/api-client";
 function getClientOrigin(): string {
   const explicit = process.env.NEXT_PUBLIC_APP_URL?.trim();
   if (explicit) return explicit.replace(/\/$/, "");
+  if (typeof window !== "undefined") return window.location.origin;
   return "http://localhost:3001";
 }
 

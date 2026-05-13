@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { getRole } from '../../lib/auth'
 import { getD1 } from '../../lib/edge-env'
 import { getAuthUserFromContext } from '../../lib/auth-user'
+import { getPublicAppUrl } from '../../lib/public-url'
 import { AppEnv, requireAuthJwt } from '../../middleware'
 
 const creditsCheckout = new Hono<AppEnv>()
@@ -30,7 +31,16 @@ creditsCheckout.post('/', async (c) => {
     const redirectPath = isAdmin ? '/admin/riwayat' : '/user/riwayat'
 
     const xenditKey = (c.env as { XENDIT_SECRET_KEY?: string }).XENDIT_SECRET_KEY || ''
-    const baseUrl = (c.env as { NEXT_PUBLIC_APP_URL?: string }).NEXT_PUBLIC_APP_URL || ''
+    const baseUrl = getPublicAppUrl(c)
+    if (!baseUrl) {
+      return c.json(
+        {
+          error:
+            'Could not determine app URL. Set NEXT_PUBLIC_APP_URL on the Worker or open checkout from the deployed site.',
+        },
+        500
+      )
+    }
 
     const externalId = `pkg_${pkg.id}_user_${userId}_ts_${Date.now()}`
     const invoicePayload: Record<string, unknown> = {
