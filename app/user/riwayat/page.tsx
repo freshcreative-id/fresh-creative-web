@@ -99,10 +99,15 @@ export default function UserRiwayatPage() {
       const detail = (event as CustomEvent<{ type?: string; channel?: string; payload?: Record<string, unknown> }>).detail
       if (!detail?.type || detail.channel !== 'global') return
       const path = typeof detail.payload?.path === 'string' ? detail.payload.path : ''
+      const isAlbumMutationForPayments =
+        path.startsWith('/api/albums/') &&
+        (path.includes('/checkout') ||
+          path.includes('/join-requests') ||
+          /^\/api\/albums\/[^/]+$/.test(path))
       const isTransactionEvent =
         path.startsWith('/api/credits/') ||
         path.startsWith('/api/webhooks/xendit') ||
-        (path.startsWith('/api/albums') && path.includes('/checkout'))
+        isAlbumMutationForPayments
       if (!isTransactionEvent) return
       const now = Date.now()
       if (now - lastRealtimeFetchRef.current < 3000) return

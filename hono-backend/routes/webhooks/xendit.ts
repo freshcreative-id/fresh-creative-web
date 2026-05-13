@@ -75,6 +75,17 @@ webhooksXendit.post('/', async (c) => {
           .prepare(`UPDATE albums SET payment_url = NULL, updated_at = datetime('now') WHERE id = ? AND payment_url IS NOT NULL`)
           .bind(tx.album_id)
           .run()
+
+        void publishRealtimeEventFromContext(c, {
+          type: 'api.mutated',
+          channel: 'global',
+          payload: {
+            path: `/api/albums/${tx.album_id}`,
+            albumId: tx.album_id,
+            invoiceStatus: status,
+          },
+          ts: new Date().toISOString(),
+        })
       }
       if (tx.access_id && externalId.startsWith('member_')) {
         await db
@@ -191,6 +202,17 @@ webhooksXendit.post('/', async (c) => {
           await setCreditsInD1(db, userId.user_id, nextCredits)
         }
       }
+
+      void publishRealtimeEventFromContext(c, {
+        type: 'api.mutated',
+        channel: 'global',
+        payload: {
+          path: '/api/credits/',
+          externalId,
+          invoiceStatus: status,
+        },
+        ts: new Date().toISOString(),
+      })
     }
 
     if (txRow?.album_id && isAlbum) {
