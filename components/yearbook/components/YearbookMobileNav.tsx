@@ -167,11 +167,11 @@ export default function YearbookMobileNav(props: YearbookMobileNavProps) {
     <>
       {/* Mobile Bottom Navigation - Preview & Approval langsung di bar, tidak dibungkus Menu Lainnya */}
       {!hideBottomNav && (
-        <div className={`fixed bottom-0 left-0 right-0 z-[60] bg-white dark:bg-slate-900 border-t-2 border-slate-900 dark:border-slate-700 flex lg:hidden items-center justify-around min-h-[3.5rem] sm:min-h-16 pb-safe safe-area-bottom transform transition-transform duration-300 ease-out ${bottomNavVisible ? 'translate-y-0' : 'translate-y-32'}`}>
+        <div className={`fixed bottom-0 left-0 right-0 z-[60] bg-white dark:bg-slate-900 border-t-2 border-slate-900 dark:border-slate-700 flex lg:hidden items-center justify-between px-0 min-h-[3.5rem] sm:min-h-16 pb-safe safe-area-bottom transform transition-transform duration-300 ease-out ${bottomNavVisible ? 'translate-y-0' : 'translate-y-32'}`}>
           {canManage && (
             <button
               onClick={() => handleNavClick('preview')}
-              className={`flex flex-col items-center justify-center flex-1 h-full gap-0.5 active:scale-95 transition-all min-w-0 py-1.5 ${sidebarMode === 'preview' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
+              className={`flex flex-col items-center justify-center flex-1 h-full gap-0.5 active:scale-95 transition-all min-w-0 py-[3px] ${sidebarMode === 'preview' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
             >
               <Eye className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" strokeWidth={2.5} />
               <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-center truncate w-full px-0.5">Preview</span>
@@ -180,13 +180,13 @@ export default function YearbookMobileNav(props: YearbookMobileNavProps) {
 
           <button
             onClick={() => handleNavClick(canManage ? 'management' : 'classes')}
-            className={`flex flex-col items-center justify-center flex-1 h-full gap-0.5 active:scale-95 transition-all min-w-0 py-1.5 ${(['classes', 'sambutan', 'management'].includes(sidebarMode) || isCoverView) ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
+            className={`flex flex-col items-center justify-center flex-1 h-full gap-0.5 active:scale-95 transition-all min-w-0 py-[3px] ${(['classes', 'sambutan', 'management'].includes(sidebarMode) || isCoverView) ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
           >
             <Edit3 className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" strokeWidth={2.5} />
             <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-center truncate w-full px-0.5">Edit</span>
           </button>
 
-          <div className="flex-1 flex items-center justify-center relative min-w-0 py-1.5">
+          <div className="flex-1 flex items-center justify-center relative min-w-0 py-[3px]">
             <button
               onClick={() => handleNavClick('ai-labs')}
               className={`absolute -top-5 sm:-top-7 w-11 h-11 sm:w-14 sm:h-14 rounded-full flex items-center justify-center shadow-[0_1.5px_0_0_#0f172a] sm:shadow-[0_6px_0_0_#0f172a] dark:shadow-[0_1.5px_0_0_#334155] sm:dark:shadow-[0_6px_0_0_#334155] active:shadow-none active:translate-y-0.5 sm:active:translate-y-1 transition-all border-2 border-slate-900 dark:border-slate-700 ${sidebarMode === 'ai-labs'
@@ -208,7 +208,7 @@ export default function YearbookMobileNav(props: YearbookMobileNavProps) {
 
           <button
             onClick={() => handleNavClick('flipbook')}
-            className={`flex flex-col items-center justify-center flex-1 h-full gap-0.5 active:scale-95 transition-all min-w-0 relative py-1.5 ${sidebarMode === 'flipbook' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
+            className={`flex flex-col items-center justify-center flex-1 h-full gap-0.5 active:scale-95 transition-all min-w-0 relative py-[3px] ${sidebarMode === 'flipbook' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
           >
             <div className="relative">
               <Book className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" strokeWidth={2.5} />
@@ -222,7 +222,7 @@ export default function YearbookMobileNav(props: YearbookMobileNavProps) {
           {canManage && (
             <button
               onClick={() => handleNavClick('approval')}
-              className={`flex flex-col items-center justify-center flex-1 h-full gap-0.5 active:scale-95 transition-all relative min-w-0 py-1.5 ${sidebarMode === 'approval' || sidebarMode === 'team' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
+              className={`flex flex-col items-center justify-center flex-1 h-full gap-0.5 active:scale-95 transition-all relative min-w-0 py-[3px] ${sidebarMode === 'approval' || sidebarMode === 'team' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
             >
               <div className="relative">
                 <ClipboardList className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" strokeWidth={2.5} />

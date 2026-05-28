@@ -1044,7 +1044,7 @@ export default function PreviewView({
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.95, opacity: 0 }}
                             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                            className={`w-full rounded-2xl overflow-hidden bg-black ring-1 ring-white/10 relative aspect-video ${isMobileLandscape ? 'max-h-[72vh] max-w-2xl' : 'max-h-[85vh] max-w-4xl'}`}
+                            className={`inline-block max-w-full overflow-hidden rounded-2xl bg-black ring-1 ring-white/10 ${isMobileLandscape ? 'max-h-[72vh] max-w-2xl' : 'max-h-[85vh] max-w-4xl'}`}
                         >
                             <video
                                 src={videoPopupUrl}
@@ -1052,7 +1052,7 @@ export default function PreviewView({
                                 autoPlay
                                 preload="metadata"
                                 playsInline
-                                className="w-full h-full object-contain"
+                                className={`block w-auto h-auto object-contain ${isMobileLandscape ? 'max-h-[72vh] max-w-[min(calc(100vw-2rem),42rem)]' : 'max-h-[85vh] max-w-[min(calc(100vw-2rem),56rem)]'}`}
                             >
                                 Maaf, browser Anda tidak mendukung pemutar video.
                             </video>

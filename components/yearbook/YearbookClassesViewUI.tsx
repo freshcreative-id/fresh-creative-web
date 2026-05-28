@@ -1303,8 +1303,13 @@ export default function YearbookClassesViewUI(props: any) {
             {/* Main content - scrollable container */}
             <main
               ref={mainContentRef}
-              className={`flex-1 ${(sidebarMode === 'flipbook' || isAiLabsToolActive) ? 'overflow-hidden pb-0' : 'overflow-y-auto pb-6 lg:pb-0'} px-4 sm:px-6 lg:px-12 rounded-t-none relative
+              className={`flex-1 ${(sidebarMode === 'flipbook' || isAiLabsToolActive) ? 'overflow-hidden pb-0' : 'overflow-y-auto pb-6 lg:pb-0'} ${
+                (sidebarMode === 'flipbook' && (flipbookPreviewMode || !canManage)) || isAiLabsToolActive
+                  ? 'px-0'
+                  : 'px-2 sm:px-6 lg:px-12'
+              } rounded-t-none relative
               ${(['classes', 'sambutan'].includes(sidebarMode) || isCoverView) ? 'lg:ml-64' : 'lg:ml-0'}
+              ${isCoverView ? 'pt-2 lg:pt-0' : ''}
               bg-white dark:bg-slate-950
             `}
             >
@@ -1688,7 +1693,9 @@ export default function YearbookClassesViewUI(props: any) {
               <div
                 className={
                   !isCoverView && sidebarMode === 'flipbook'
-                    ? `block w-full min-h-0 ${flipbookPreviewMode || !canManage ? 'h-[calc(100dvh-3.5rem)]' : 'h-full'}`
+                    // NOTE: parent shells (YearbookAlbumClient + header) already determine the available height.
+                    // Using 100dvh here can double-subtract and break centering in preview.
+                    ? `block w-full min-h-0 h-full`
                     : 'hidden'
                 }
               >
@@ -1700,6 +1707,7 @@ export default function YearbookClassesViewUI(props: any) {
                     flipbookPreviewMode={flipbookPreviewMode}
                     onPlayVideo={onPlayVideo}
                     onUpdateAlbum={props.handleUpdateAlbum}
+                    fullscreenRootRef={props.fullscreenRootRef}
                   />
                 ) : (
                   <FlipbookLockedView

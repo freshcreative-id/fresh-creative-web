@@ -216,6 +216,7 @@ CREATE TABLE IF NOT EXISTS manual_flipbook_pages (
   image_url TEXT NOT NULL,
   width REAL,
   height REAL,
+  page_slot TEXT NOT NULL DEFAULT 'body',
   created_at TEXT DEFAULT (datetime('now'))
 );
 

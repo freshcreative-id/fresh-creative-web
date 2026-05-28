@@ -8,6 +8,7 @@ import { publicAlbumAssetUrl } from '../../../lib/public-file-url'
 import {
   flipbookPublicCache,
   FLIPBOOK_PUBLIC_TTL_MS,
+  invalidateAlbumCaches,
 } from '../../../lib/album-response-cache'
 import {
   deleteR2ObjectFromPublicUrl,
@@ -105,8 +106,14 @@ async function normalizeManualFlipbookPagesOrder(db: D1Database, albumId: string
     .filter((r) => rowFlipbookSlot(r.page_slot) === 'body')
     .sort((a, b) => a.page_number - b.page_number)
 
-  const frontKeep = fronts[0]
-  const backKeep = backs.length ? backs[backs.length - 1] : undefined
+  // Backward-compat: older DB rows may not have page_slot set (all treated as body).
+  // If no explicit front/back exists, promote the lowest/highest page_number rows to keep order stable.
+  const sortedByNumber = [...rows].sort((a, b) => a.page_number - b.page_number)
+  const inferredFront = sortedByNumber[0]
+  const inferredBack = sortedByNumber.length > 1 ? sortedByNumber[sortedByNumber.length - 1] : undefined
+
+  const frontKeep = fronts[0] ?? inferredFront
+  const backKeep = backs.length ? backs[backs.length - 1] : inferredBack
 
   const demoted = [...fronts.slice(1), ...backs.slice(0, backs.length ? backs.length - 1 : 0)]
   if (demoted.length) {
@@ -129,6 +136,7 @@ async function normalizeManualFlipbookPagesOrder(db: D1Database, albumId: string
       .run()
   }
   for (const b of bodies) {
+    if (b.id === frontKeep?.id || b.id === backKeep?.id) continue
     await db
       .prepare(`UPDATE manual_flipbook_pages SET page_number = ?, page_slot = 'body' WHERE id = ? AND album_id = ?`)
       .bind(pn++, b.id, albumId)
@@ -388,6 +396,7 @@ albumFlipbookRoute.delete('/pages/:pageId', async (c) => {
   if ((del.meta?.changes ?? 0) === 0) return c.json({ error: 'Halaman tidak ditemukan' }, 404)
 
   await normalizeManualFlipbookPagesOrder(perm.db, albumId)
+  invalidateAlbumCaches(albumId)
   return c.json({ ok: true })
 })
 
@@ -453,6 +462,11 @@ albumFlipbookRoute.post('/hotspots', async (c) => {
   const body = await c.req.json<Record<string, unknown>>()
   const pageId = String(body.page_id ?? '')
   if (!pageId) return c.json({ error: 'page_id required' }, 400)
+  const page = await perm.db
+    .prepare(`SELECT id FROM manual_flipbook_pages WHERE id = ? AND album_id = ?`)
+    .bind(pageId, albumId)
+    .first<{ id: string }>()
+  if (!page) return c.json({ error: 'Page not found' }, 404)
   const id = crypto.randomUUID()
   const videoUrl = String(body.video_url ?? '')
   const label = String(body.label ?? '')
@@ -472,6 +486,7 @@ albumFlipbookRoute.post('/hotspots', async (c) => {
     .prepare(`SELECT * FROM flipbook_video_hotspots WHERE id = ?`)
     .bind(id)
     .first<Record<string, unknown>>()
+  invalidateAlbumCaches(albumId)
   return c.json(row)
 })
 
@@ -482,6 +497,15 @@ albumFlipbookRoute.patch('/hotspots/:hotspotId', async (c) => {
   if (!albumId || !hotspotId) return c.json({ error: 'Album ID and hotspot ID required' }, 400)
   const perm = await canManageFlipbook(c, albumId)
   if (!perm.ok) return denyFlipbookManage(c, perm as FlipbookManageDenied)
+  const owned = await perm.db
+    .prepare(
+      `SELECT h.id FROM flipbook_video_hotspots h
+       INNER JOIN manual_flipbook_pages p ON p.id = h.page_id
+       WHERE h.id = ? AND p.album_id = ?`
+    )
+    .bind(hotspotId, albumId)
+    .first<{ id: string }>()
+  if (!owned) return c.json({ error: 'Hotspot not found' }, 404)
   const body = await c.req.json<Record<string, unknown>>()
   const sets: string[] = []
   const vals: unknown[] = []
@@ -532,6 +556,7 @@ albumFlipbookRoute.patch('/hotspots/:hotspotId', async (c) => {
     .prepare(`SELECT * FROM flipbook_video_hotspots WHERE id = ?`)
     .bind(hotspotId)
     .first<Record<string, unknown>>()
+  invalidateAlbumCaches(albumId)
   return c.json(row)
 })
 
@@ -543,18 +568,28 @@ albumFlipbookRoute.delete('/hotspots/:hotspotId', async (c) => {
   const perm = await canManageFlipbook(c, albumId)
   if (!perm.ok) return denyFlipbookManage(c, perm as FlipbookManageDenied)
   const existing = await perm.db
-    .prepare(`SELECT video_url FROM flipbook_video_hotspots WHERE id = ?`)
-    .bind(hotspotId)
+    .prepare(
+      `SELECT h.video_url FROM flipbook_video_hotspots h
+       INNER JOIN manual_flipbook_pages p ON p.id = h.page_id
+       WHERE h.id = ? AND p.album_id = ?`
+    )
+    .bind(hotspotId, albumId)
     .first<{ video_url: string | null }>()
   if (!existing) return c.json({ error: 'Hotspot not found' }, 404)
   const bucket = getAssets(c)
   await deleteR2ObjectFromPublicUrl(c, bucket, existing.video_url)
   const del = await perm.db
-    .prepare(`DELETE FROM flipbook_video_hotspots WHERE id = ?`)
-    .bind(hotspotId)
+    .prepare(
+      `DELETE FROM flipbook_video_hotspots
+       WHERE id = ? AND page_id IN (
+         SELECT id FROM manual_flipbook_pages WHERE album_id = ?
+       )`
+    )
+    .bind(hotspotId, albumId)
     .run()
   if (!del.success) return c.json({ error: 'Delete failed' }, 500)
   if (del.meta.changes === 0) return c.json({ error: 'Hotspot not found' }, 404)
+  invalidateAlbumCaches(albumId)
   return c.json({ ok: true })
 })
 

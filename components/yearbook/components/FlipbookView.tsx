@@ -11,6 +11,7 @@ interface FlipbookViewProps {
   flipbookPreviewMode: boolean
   onPlayVideo: (url: string) => void
   onUpdateAlbum?: any
+  fullscreenRootRef?: React.RefObject<HTMLElement | null>
 }
 
 export default function FlipbookView({
@@ -20,6 +21,7 @@ export default function FlipbookView({
   flipbookPreviewMode,
   onPlayVideo,
   onUpdateAlbum,
+  fullscreenRootRef,
 }: FlipbookViewProps) {
   // Keep editor mounted so switching preview <-> editor feels instant.
   // Previously the editor unmounted in preview mode, causing refetch and blank flash.
@@ -33,12 +35,23 @@ export default function FlipbookView({
             pages={manualPages} 
             onPlayVideo={onPlayVideo} 
             className="w-full h-full" 
-            albumId={album?.id} 
+            albumId={album?.id}
+            fullscreenRootRef={fullscreenRootRef}
             isEditorView={canManage && !flipbookPreviewMode} 
             isVisible={showPreview} 
+            // Admin preview shell has a taller header; nudge book slightly down in preview only.
+            centerNudgeDownPxMobile={flipbookPreviewMode ? 6 : undefined}
+            centerNudgeDownPxDesktop={flipbookPreviewMode ? 8 : undefined}
+            // Use the same spacing preset as public so preview matches public.
+            chromePaddingYExtraMobile={flipbookPreviewMode ? 10 : undefined}
+            chromePaddingYExtraDesktop={flipbookPreviewMode ? 24 : undefined}
+            chromePaddingXExtraMobile={flipbookPreviewMode ? -8 : undefined}
+            chromePaddingXExtraDesktop={flipbookPreviewMode ? 0 : undefined}
           />
       </div>
-      <div className={`${showEditor && !flipbookPreviewMode ? 'flex' : 'hidden'} flex-1 min-h-0`}>
+      <div
+        className={`${showEditor && !flipbookPreviewMode ? 'flex' : 'hidden'} flex-1 min-h-0 pb-[calc(3.5rem+env(safe-area-inset-bottom)+8px)] lg:pb-0`}
+      >
         <LayoutEditor
           album={album}
           onPlayVideo={onPlayVideo}

@@ -20,6 +20,7 @@ type ManualFlipbookPage = {
     image_url: string
     width?: number
     height?: number
+    page_slot?: 'front_cover' | 'body' | 'back_cover'
     flipbook_video_hotspots?: VideoHotspot[]
 }
 
@@ -35,8 +36,53 @@ type VideoHotspot = {
 }
 
 const TEMP_HOTSPOT_ID_PREFIX = 'temp-hotspot-'
+
+const asHotspotId = (value: unknown): string | undefined => {
+    if (typeof value === 'string' && value.trim()) return value.trim()
+    if (typeof value === 'number' && Number.isFinite(value)) return String(value)
+    return undefined
+}
 const PDF_RENDER_SCALE = 1.2
 const PDF_UPLOAD_CONCURRENCY = 3
+
+const getMiddlePages = (pages: ManualFlipbookPage[]) =>
+    pages.length < 3 ? [] : pages.slice(1, -1)
+
+const canReorderPageAt = (index: number, pages: ManualFlipbookPage[]) =>
+    pages.length >= 3 && index > 0 && index < pages.length - 1
+
+const getMiddlePageIndex = (pageId: string, pages: ManualFlipbookPage[]) =>
+    getMiddlePages(pages).findIndex((p) => p.id === pageId)
+
+const AUTO_SCROLL_EDGE_PX = 56
+const AUTO_SCROLL_MAX_SPEED = 14
+
+function runListAutoScroll(container: HTMLElement, clientX: number, clientY: number) {
+    const rect = container.getBoundingClientRect()
+    const vertical = window.matchMedia('(min-width: 1024px)').matches
+
+    if (vertical) {
+        const fromTop = clientY - rect.top
+        const fromBottom = rect.bottom - clientY
+        if (fromTop >= 0 && fromTop < AUTO_SCROLL_EDGE_PX) {
+            const factor = 1 - fromTop / AUTO_SCROLL_EDGE_PX
+            container.scrollTop -= Math.max(1, Math.round(AUTO_SCROLL_MAX_SPEED * factor))
+        } else if (fromBottom >= 0 && fromBottom < AUTO_SCROLL_EDGE_PX) {
+            const factor = 1 - fromBottom / AUTO_SCROLL_EDGE_PX
+            container.scrollTop += Math.max(1, Math.round(AUTO_SCROLL_MAX_SPEED * factor))
+        }
+    } else {
+        const fromLeft = clientX - rect.left
+        const fromRight = rect.right - clientX
+        if (fromLeft >= 0 && fromLeft < AUTO_SCROLL_EDGE_PX) {
+            const factor = 1 - fromLeft / AUTO_SCROLL_EDGE_PX
+            container.scrollLeft -= Math.max(1, Math.round(AUTO_SCROLL_MAX_SPEED * factor))
+        } else if (fromRight >= 0 && fromRight < AUTO_SCROLL_EDGE_PX) {
+            const factor = 1 - fromRight / AUTO_SCROLL_EDGE_PX
+            container.scrollLeft += Math.max(1, Math.round(AUTO_SCROLL_MAX_SPEED * factor))
+        }
+    }
+}
 
 export default function FlipbookLayoutEditor({ album, onPlayVideo, onUpdateAlbum, canManage = false }: FlipbookViewProps) {
     // Manual Mode is now the only mode
@@ -48,7 +94,9 @@ export default function FlipbookLayoutEditor({ album, onPlayVideo, onUpdateAlbum
     const [deleteHotspotConfirm, setDeleteHotspotConfirm] = useState<string | null>(null)
     const [uploadingHotspotId, setUploadingHotspotId] = useState<string | null>(null)
     const [deleteAllPagesConfirm, setDeleteAllPagesConfirm] = useState(false)
+    const [deletePageConfirm, setDeletePageConfirm] = useState<{ id: string; label: string } | null>(null)
     const [isDeletingAll, setIsDeletingAll] = useState(false)
+    const [isDeletingPage, setIsDeletingPage] = useState(false)
     const [isPageReady, setIsPageReady] = useState(false)
     const [lastSelectedId, setLastSelectedId] = useState<string | null>(null)
     const [mobileTab, setMobileTab] = useState<'pages' | 'hotspots'>('pages')
@@ -58,9 +106,20 @@ export default function FlipbookLayoutEditor({ album, onPlayVideo, onUpdateAlbum
     const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
     const touchDragPageIdRef = useRef<string | null>(null)
     const touchDragOverIndexRef = useRef<number | null>(null)
+    const touchDragPointerRef = useRef<{ x: number; y: number } | null>(null)
+    const touchDragAutoScrollRafRef = useRef<number | null>(null)
+    const pagesListScrollRef = useRef<HTMLDivElement>(null)
     const manualPagesRef = useRef<ManualFlipbookPage[]>([])
+    const hotspotServerIdByTempIdRef = useRef<Map<string, string>>(new Map())
+    const cancelledTempHotspotIdsRef = useRef<Set<string>>(new Set())
 
     useEffect(() => { manualPagesRef.current = manualPages }, [manualPages])
+
+    useEffect(() => () => {
+        if (touchDragAutoScrollRafRef.current != null) {
+            cancelAnimationFrame(touchDragAutoScrollRafRef.current)
+        }
+    }, [])
 
     useEffect(() => {
         if (selectedManualPageId !== lastSelectedId) {
@@ -118,6 +177,37 @@ export default function FlipbookLayoutEditor({ album, onPlayVideo, onUpdateAlbum
     }, [album?.id])
     // Supabase auth-only: no Realtime. We refetch pages after actions as needed.
 
+    const handleDeletePage = async (pageId: string) => {
+        if (!album?.id) return
+
+        setIsDeletingPage(true)
+        try {
+            const res = await fetchWithAuth(
+                `/api/albums/${album.id}/flipbook/pages/${encodeURIComponent(pageId)}`,
+                { method: 'DELETE' },
+            )
+            if (!res.ok) {
+                const err = asObject(await res.json().catch(() => ({})))
+                throw new Error(getErrorMessage(err, 'Gagal menghapus halaman'))
+            }
+
+            setManualPages((prev) => {
+                const next = prev.filter((p) => p.id !== pageId)
+                setSelectedManualPageId((cur) => (cur === pageId ? (next[0]?.id ?? null) : cur))
+                return next
+            })
+            await fetchManualPages()
+            toast.success('Halaman berhasil dihapus')
+        } catch (error: unknown) {
+            console.error('Error deleting page:', error)
+            toast.error(error instanceof Error ? error.message : 'Gagal menghapus halaman')
+            await fetchManualPages()
+        } finally {
+            setIsDeletingPage(false)
+            setDeletePageConfirm(null)
+        }
+    }
+
     const handleDeleteAllPages = async () => {
         if (!manualPages.length) return
 
@@ -171,46 +261,84 @@ export default function FlipbookLayoutEditor({ album, onPlayVideo, onUpdateAlbum
         }
     }
 
+    const deleteHotspotOnServer = async (serverHotspotId: string) => {
+        if (!album?.id) throw new Error('Album ID tidak valid')
+        const res = await fetchWithAuth(
+            `/api/albums/${album.id}/flipbook/hotspots/${encodeURIComponent(serverHotspotId)}`,
+            { method: 'DELETE' },
+        )
+        if (!res.ok) {
+            const err = asObject(await res.json().catch(() => ({})))
+            throw new Error(getErrorMessage(err, 'Gagal menghapus hotspot'))
+        }
+    }
+
     const handleDeleteHotspot = async (hotspotId: string) => {
+        if (!album?.id) return
+
         let deletedHotspot: VideoHotspot | null = null
         let deletedFromPageId: string | null = null
-
-        setManualPages(prev => prev.map(p => {
-            const hotspots = p.flipbook_video_hotspots || []
-            const found = hotspots.find(h => h.id === hotspotId)
+        for (const p of manualPages) {
+            const found = (p.flipbook_video_hotspots || []).find((h) => String(h.id) === String(hotspotId))
             if (found) {
                 deletedHotspot = found
                 deletedFromPageId = p.id
+                break
             }
-            return {
-                ...p,
-                flipbook_video_hotspots: hotspots.filter(h => h.id !== hotspotId)
-            }
-        }))
-
+        }
         if (!deletedHotspot || !deletedFromPageId) return
 
-        if (hotspotId.startsWith(TEMP_HOTSPOT_ID_PREFIX)) {
-            return
+        const isTemp = hotspotId.startsWith(TEMP_HOTSPOT_ID_PREFIX)
+        const serverHotspotId = isTemp
+            ? hotspotServerIdByTempIdRef.current.get(hotspotId)
+            : String(hotspotId)
+
+        if (isTemp) {
+            cancelledTempHotspotIdsRef.current.add(hotspotId)
         }
 
-        const res = await fetchWithAuth(`/api/albums/${album.id}/flipbook/hotspots/${hotspotId}`, {
-            method: 'DELETE',
-        })
-        if (res.ok) {
-            toast.success('Hotspot dihapus')
-            return
-        }
-
-        // Rollback if delete failed.
-        setManualPages(prev => prev.map(p => {
-            if (p.id !== deletedFromPageId) return p
-            return {
+        setManualPages((prev) =>
+            prev.map((p) => ({
                 ...p,
-                flipbook_video_hotspots: [...(p.flipbook_video_hotspots || []), deletedHotspot as VideoHotspot]
-            }
-        }))
-        toast.error('Gagal menghapus hotspot')
+                flipbook_video_hotspots: (p.flipbook_video_hotspots || []).filter(
+                    (h) => String(h.id) !== String(hotspotId),
+                ),
+            })),
+        )
+
+        if (isTemp && !serverHotspotId) {
+            toast.success('Hotspot berhasil dihapus')
+            return
+        }
+
+        const idToDelete = serverHotspotId ?? String(hotspotId)
+        if (idToDelete.startsWith(TEMP_HOTSPOT_ID_PREFIX)) {
+            toast.success('Hotspot berhasil dihapus')
+            return
+        }
+
+        try {
+            await deleteHotspotOnServer(idToDelete)
+            hotspotServerIdByTempIdRef.current.delete(hotspotId)
+            cancelledTempHotspotIdsRef.current.delete(hotspotId)
+            toast.success('Hotspot berhasil dihapus')
+        } catch (error: unknown) {
+            cancelledTempHotspotIdsRef.current.delete(hotspotId)
+            setManualPages((prev) =>
+                prev.map((p) => {
+                    if (p.id !== deletedFromPageId) return p
+                    const exists = (p.flipbook_video_hotspots || []).some(
+                        (h) => String(h.id) === String(hotspotId),
+                    )
+                    if (exists) return p
+                    return {
+                        ...p,
+                        flipbook_video_hotspots: [...(p.flipbook_video_hotspots || []), deletedHotspot as VideoHotspot],
+                    }
+                }),
+            )
+            toast.error(error instanceof Error ? error.message : 'Gagal menghapus hotspot')
+        }
     }
 
     const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -289,8 +417,22 @@ export default function FlipbookLayoutEditor({ album, onPlayVideo, onUpdateAlbum
             }),
         })
         const data = asObject(await res.json().catch(() => ({})))
-        if (res.ok && asString(data.id)) {
-            const serverId = asString(data.id) as string
+        const serverId = asHotspotId(data.id)
+        if (res.ok && serverId) {
+            hotspotServerIdByTempIdRef.current.set(optimisticHotspotId, serverId)
+
+            if (cancelledTempHotspotIdsRef.current.has(optimisticHotspotId)) {
+                cancelledTempHotspotIdsRef.current.delete(optimisticHotspotId)
+                hotspotServerIdByTempIdRef.current.delete(optimisticHotspotId)
+                try {
+                    await deleteHotspotOnServer(serverId)
+                } catch (err) {
+                    console.error('Failed to delete cancelled hotspot:', err)
+                    toast.error('Gagal menghapus hotspot dari server')
+                }
+                return
+            }
+
             let localHotspotSnapshot: VideoHotspot | null = null
             setManualPages(prev => prev.map(p =>
                 p.id === selectedManualPageId
@@ -312,12 +454,13 @@ export default function FlipbookLayoutEditor({ album, onPlayVideo, onUpdateAlbum
                     }
                     : p
             ))
+            hotspotServerIdByTempIdRef.current.delete(optimisticHotspotId)
 
             if (localHotspotSnapshot && (
                 localHotspotSnapshot.label !== asString(data.label) ||
                 localHotspotSnapshot.video_url !== asString(data.video_url)
             )) {
-                fetchWithAuth(`/api/albums/${album.id}/flipbook/hotspots/${serverId}`, {
+                fetchWithAuth(`/api/albums/${album.id}/flipbook/hotspots/${encodeURIComponent(serverId)}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -328,6 +471,7 @@ export default function FlipbookLayoutEditor({ album, onPlayVideo, onUpdateAlbum
                     // Keep UI responsive; user can re-save manually if needed.
                 })
             }
+            toast.success('Hotspot berhasil ditambahkan')
             return
         }
 
@@ -441,7 +585,8 @@ export default function FlipbookLayoutEditor({ album, onPlayVideo, onUpdateAlbum
                         page_number: pageNumber,
                         image_url: publicUrl,
                         width: Math.round(viewport.width),
-                        height: Math.round(viewport.height)
+                        height: Math.round(viewport.height),
+                        page_slot: 'body',
                     }),
                 })
                 const pageData = asObject(await pageRes.json().catch(() => ({})))
@@ -479,7 +624,7 @@ export default function FlipbookLayoutEditor({ album, onPlayVideo, onUpdateAlbum
         }
     }
 
-    // Upload Cover (page_number = 0, always first)
+    // Upload Cover (front cover)
     const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (!file || !album?.id) return
@@ -489,42 +634,18 @@ export default function FlipbookLayoutEditor({ album, onPlayVideo, onUpdateAlbum
 
         try {
             const publicUrl = await uploadFlipbookAsset(file, 'pages')
-
-            // Check if cover (page_number=1) already exists
-            const existingCover = manualPages.find(p => p.page_number === 1)
-            if (existingCover) {
-                // Update existing cover
-                const updateRes = await fetchWithAuth(`/api/albums/${album.id}/flipbook/pages/${existingCover.id}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image_url: publicUrl }),
-                })
-                if (!updateRes.ok) {
-                    const err = asObject(await updateRes.json().catch(() => ({})))
-                    throw new Error(getErrorMessage(err, 'Gagal update cover'))
-                }
-            } else {
-                // Shift all existing pages +1 then insert cover at page_number 1
-                for (const p of manualPages.sort((a, b) => b.page_number - a.page_number)) {
-                    const shiftRes = await fetchWithAuth(`/api/albums/${album.id}/flipbook/pages/${p.id}`, {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ page_number: p.page_number + 1 }),
-                    })
-                    if (!shiftRes.ok) {
-                        const err = asObject(await shiftRes.json().catch(() => ({})))
-                        throw new Error(getErrorMessage(err, 'Gagal menggeser halaman'))
-                    }
-                }
-                const insertRes = await fetchWithAuth(`/api/albums/${album.id}/flipbook/pages`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ album_id: album.id, page_number: 1, image_url: publicUrl }),
-                })
-                if (!insertRes.ok) {
-                    const err = asObject(await insertRes.json().catch(() => ({})))
-                    throw new Error(getErrorMessage(err, 'Gagal menambah cover'))
-                }
+            const insertRes = await fetchWithAuth(`/api/albums/${album.id}/flipbook/pages`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    album_id: album.id,
+                    image_url: publicUrl,
+                    page_slot: 'front_cover',
+                }),
+            })
+            if (!insertRes.ok) {
+                const err = asObject(await insertRes.json().catch(() => ({})))
+                throw new Error(getErrorMessage(err, 'Gagal menambah cover'))
             }
 
             await fetchManualPages()
@@ -538,7 +659,7 @@ export default function FlipbookLayoutEditor({ album, onPlayVideo, onUpdateAlbum
         }
     }
 
-    // Upload Back Cover (always last page)
+    // Upload Back Cover
     const handleBackCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (!file || !album?.id) return
@@ -548,15 +669,14 @@ export default function FlipbookLayoutEditor({ album, onPlayVideo, onUpdateAlbum
 
         try {
             const publicUrl = await uploadFlipbookAsset(file, 'pages')
-
-            const lastPageNumber = manualPages.length > 0
-                ? Math.max(...manualPages.map(p => p.page_number)) + 1
-                : 1
-
             const insertRes = await fetchWithAuth(`/api/albums/${album.id}/flipbook/pages`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ album_id: album.id, page_number: lastPageNumber, image_url: publicUrl }),
+                body: JSON.stringify({
+                    album_id: album.id,
+                    image_url: publicUrl,
+                    page_slot: 'back_cover',
+                }),
             })
             if (!insertRes.ok) {
                 const err = asObject(await insertRes.json().catch(() => ({})))
@@ -605,12 +725,16 @@ export default function FlipbookLayoutEditor({ album, onPlayVideo, onUpdateAlbum
         } : null)
     }
 
-    const reorderPagesAndPersist = async (fromIndex: number, toIndex: number, pagesOverride?: ManualFlipbookPage[]) => {
+    const reorderPagesAndPersist = async (fromMiddleIndex: number, toMiddleIndex: number, pagesOverride?: ManualFlipbookPage[]) => {
         const pages = pagesOverride ?? manualPages
-        if (fromIndex === toIndex || !album?.id) return
-        const reordered = [...pages]
-        const [removed] = reordered.splice(fromIndex, 1)
-        reordered.splice(toIndex, 0, removed)
+        if (fromMiddleIndex === toMiddleIndex || pages.length < 3 || !album?.id) return
+        const first = pages[0]
+        const last = pages[pages.length - 1]
+        const middle = pages.slice(1, -1)
+        const reorderedMiddle = [...middle]
+        const [removed] = reorderedMiddle.splice(fromMiddleIndex, 1)
+        reorderedMiddle.splice(toMiddleIndex, 0, removed)
+        const reordered = [first, ...reorderedMiddle, last]
         setManualPages(reordered)
         setDragOverIndex(null)
         setDraggedPageId(null)
@@ -632,24 +756,29 @@ export default function FlipbookLayoutEditor({ album, onPlayVideo, onUpdateAlbum
     }
 
     const handlePageDragStart = (e: React.DragEvent, pageId: string) => {
+        const listIndex = manualPages.findIndex((p) => p.id === pageId)
+        if (!canReorderPageAt(listIndex, manualPages)) {
+            e.preventDefault()
+            return
+        }
         setDraggedPageId(pageId)
         e.dataTransfer.setData('text/plain', pageId)
         e.dataTransfer.effectAllowed = 'move'
     }
 
-    const handlePageDragOver = (e: React.DragEvent, index: number) => {
+    const handlePageDragOver = (e: React.DragEvent, middleIndex: number) => {
         e.preventDefault()
         e.dataTransfer.dropEffect = 'move'
-        setDragOverIndex(index)
+        setDragOverIndex(middleIndex)
     }
 
-    const handlePageDrop = (e: React.DragEvent, toIndex: number) => {
+    const handlePageDrop = (e: React.DragEvent, toMiddleIndex: number) => {
         e.preventDefault()
         const pageId = e.dataTransfer.getData('text/plain')
         if (!pageId) return
-        const fromIndex = manualPages.findIndex(p => p.id === pageId)
-        if (fromIndex === -1) return
-        reorderPagesAndPersist(fromIndex, toIndex)
+        const fromMiddleIndex = getMiddlePageIndex(pageId, manualPages)
+        if (fromMiddleIndex === -1) return
+        reorderPagesAndPersist(fromMiddleIndex, toMiddleIndex)
     }
 
     const handlePageDragEnd = () => {
@@ -661,25 +790,62 @@ export default function FlipbookLayoutEditor({ album, onPlayVideo, onUpdateAlbum
         if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverIndex(null)
     }
 
+    const updateTouchDropTargetAt = (clientX: number, clientY: number) => {
+        const el = document.elementFromPoint(clientX, clientY)
+        const row = el?.closest('[data-drop-index]')
+        if (!row) return
+        const idx = parseInt(row.getAttribute('data-drop-index') ?? '', 10)
+        if (Number.isNaN(idx)) return
+        touchDragOverIndexRef.current = idx
+        setDragOverIndex(idx)
+    }
+
+    const stopTouchDragAutoScroll = () => {
+        if (touchDragAutoScrollRafRef.current != null) {
+            cancelAnimationFrame(touchDragAutoScrollRafRef.current)
+            touchDragAutoScrollRafRef.current = null
+        }
+        touchDragPointerRef.current = null
+    }
+
+    const startTouchDragAutoScroll = () => {
+        if (touchDragAutoScrollRafRef.current != null) {
+            cancelAnimationFrame(touchDragAutoScrollRafRef.current)
+        }
+        const tick = () => {
+            const ptr = touchDragPointerRef.current
+            const container = pagesListScrollRef.current
+            if (ptr && container) {
+                runListAutoScroll(container, ptr.x, ptr.y)
+                updateTouchDropTargetAt(ptr.x, ptr.y)
+            }
+            touchDragAutoScrollRafRef.current = requestAnimationFrame(tick)
+        }
+        touchDragAutoScrollRafRef.current = requestAnimationFrame(tick)
+    }
+
     const handlePageTouchStart = (e: React.TouchEvent, pageId: string) => {
         if (!canManage) return
+        const listIndex = manualPages.findIndex((p) => p.id === pageId)
+        if (!canReorderPageAt(listIndex, manualPages)) return
         touchDragPageIdRef.current = pageId
         setDraggedPageId(pageId)
+        const startTouch = e.touches[0]
+        if (startTouch) {
+            touchDragPointerRef.current = { x: startTouch.clientX, y: startTouch.clientY }
+            updateTouchDropTargetAt(startTouch.clientX, startTouch.clientY)
+        }
+        startTouchDragAutoScroll()
+
         const onTouchMove = (ev: TouchEvent) => {
             ev.preventDefault()
             const t = ev.touches[0]
             if (!t) return
-            const el = document.elementFromPoint(t.clientX, t.clientY)
-            const row = el?.closest('[data-drop-index]')
-            if (row) {
-                const idx = parseInt(row.getAttribute('data-drop-index') ?? '', 10)
-                if (!Number.isNaN(idx)) {
-                    touchDragOverIndexRef.current = idx
-                    setDragOverIndex(idx)
-                }
-            }
+            touchDragPointerRef.current = { x: t.clientX, y: t.clientY }
+            updateTouchDropTargetAt(t.clientX, t.clientY)
         }
         const onTouchEnd = () => {
+            stopTouchDragAutoScroll()
             const fromId = touchDragPageIdRef.current
             const toIndex = touchDragOverIndexRef.current
             document.removeEventListener('touchmove', onTouchMove, { capture: true })
@@ -687,10 +853,10 @@ export default function FlipbookLayoutEditor({ album, onPlayVideo, onUpdateAlbum
             document.removeEventListener('touchcancel', onTouchEnd, { capture: true })
             if (fromId != null && toIndex != null) {
                 const pages = manualPagesRef.current
-                const fromIndex = pages.findIndex(p => p.id === fromId)
-                if (fromIndex !== -1 && fromIndex !== toIndex) {
-                    reorderPagesAndPersist(fromIndex, toIndex, pages)
-                  return
+                const fromMiddleIndex = getMiddlePageIndex(fromId, pages)
+                if (fromMiddleIndex !== -1 && fromMiddleIndex !== toIndex) {
+                    reorderPagesAndPersist(fromMiddleIndex, toIndex, pages)
+                    return
                 }
             }
             setDraggedPageId(null)
@@ -823,41 +989,81 @@ export default function FlipbookLayoutEditor({ album, onPlayVideo, onUpdateAlbum
                         )}
                     </div>
 
-                    <div className="flex flex-row lg:flex-col overflow-x-auto lg:overflow-y-auto min-h-0 gap-3 pt-2 pb-3 px-1 lg:pt-0 lg:pb-0 lg:px-0 lg:space-y-3 pr-2 lg:pr-1 snap-x snap-mandatory lg:snap-none no-scrollbar">
+                    <div
+                        ref={pagesListScrollRef}
+                        className={`flex flex-row lg:flex-col overflow-x-auto lg:overflow-y-auto min-h-0 gap-3 pt-2 pb-3 px-1 lg:pt-0 lg:pb-0 lg:px-0 lg:space-y-3 pr-2 lg:pr-1 no-scrollbar ${draggedPageId ? 'snap-none' : 'snap-x snap-mandatory lg:snap-none'}`}
+                    >
                         {manualPages.map((page, index) => {
                             const displayNum = index + 1
-                            const isFirst = index === 0
-                            const isLast = index === manualPages.length - 1
-                            const label = isFirst ? 'Cover' : isLast ? 'Back Cover' : `Hal ${index}` // Cover, Hal 1, Hal 2, ..., Back Cover
+                            const isFront = page.page_slot === 'front_cover'
+                            const isBack = page.page_slot === 'back_cover'
+                            const canReorder = canReorderPageAt(index, manualPages)
+                            const middleIndex = canReorder ? getMiddlePageIndex(page.id, manualPages) : -1
+                            const label = isFront ? 'Cover' : isBack ? 'Back Cover' : `Hal ${page.page_number}`
                             const isDragging = draggedPageId === page.id
-                            const isDropTarget = dragOverIndex === index
+                            const isDropTarget = canReorder && dragOverIndex === middleIndex
                             return (
                             <div
                                 key={page.id}
-                                data-drop-index={index}
-                                onDragOver={(e) => canManage && handlePageDragOver(e, index)}
-                                onDrop={(e) => canManage && handlePageDrop(e, index)}
-                                onDragLeave={handlePageDragLeave}
-                                onDragEnd={handlePageDragEnd}
-                                className={`flex-shrink-0 w-20 sm:w-24 lg:w-full flex flex-col lg:flex-row gap-1.5 lg:gap-3 p-1.5 lg:p-2 rounded-xl border-2 lg:border-4 transition-all text-left group snap-start lg:snap-align-none ${selectedManualPageId === page.id
+                                {...(canReorder ? { 'data-drop-index': middleIndex } : {})}
+                                onDragOver={canManage && canReorder ? (e) => handlePageDragOver(e, middleIndex) : undefined}
+                                onDrop={canManage && canReorder ? (e) => handlePageDrop(e, middleIndex) : undefined}
+                                onDragLeave={canReorder ? handlePageDragLeave : undefined}
+                                onDragEnd={canReorder ? handlePageDragEnd : undefined}
+                                className={`flex-shrink-0 w-20 sm:w-24 lg:w-full flex flex-col items-center lg:flex-row lg:items-center gap-1 lg:gap-3 p-1.5 lg:p-2 rounded-xl border-2 lg:border-4 transition-all text-left group snap-start lg:snap-align-none ${selectedManualPageId === page.id
                                     ? 'bg-amber-400 dark:bg-amber-500 border-slate-900 dark:border-slate-700 shadow-[1.5px_1.5px_0_0_#334155] lg:shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] lg:dark:shadow-[1.5px_1.5px_0_0_#1e293b] -translate-y-0.5 lg:-translate-y-0'
                                     : 'bg-white dark:bg-slate-800 border-slate-900 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'} ${isDragging ? 'opacity-50' : ''} ${isDropTarget ? 'ring-2 ring-indigo-400 dark:ring-indigo-500 ring-offset-2 dark:ring-offset-slate-900' : ''}`}
                             >
                                 {canManage && (
-                                    <div
-                                        draggable
-                                        onDragStart={(e) => handlePageDragStart(e, page.id)}
-                                        onTouchStart={(e) => handlePageTouchStart(e, page.id)}
-                                        className="flex items-center justify-center shrink-0 cursor-grab active:cursor-grabbing text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-400 lg:py-0 py-0.5 touch-none"
-                                        title="Drag untuk pindah urutan"
-                                    >
-                                        <GripVertical className="w-3 h-3 lg:w-3.5 lg:h-3.5" strokeWidth={3} />
-                                    </div>
+                                    <>
+                                        {/* Mobile: drag kiri + hapus kanan (slot 28×28px simetris); cover/back hanya hapus di tengah */}
+                                        <div
+                                            className={`flex w-full items-center lg:hidden ${canReorder ? 'justify-between' : 'justify-center'}`}
+                                        >
+                                            {canReorder ? (
+                                                <div
+                                                    draggable
+                                                    onDragStart={(e) => handlePageDragStart(e, page.id)}
+                                                    onTouchStart={(e) => handlePageTouchStart(e, page.id)}
+                                                    className="flex h-7 w-7 shrink-0 items-center justify-center cursor-grab active:cursor-grabbing text-slate-400 dark:text-slate-500 touch-none"
+                                                    title="Drag untuk pindah urutan"
+                                                >
+                                                    <GripVertical className="w-3.5 h-3.5" strokeWidth={3} />
+                                                </div>
+                                            ) : null}
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    setDeletePageConfirm({ id: page.id, label })
+                                                }}
+                                                disabled={isDeletingPage}
+                                                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-red-500 dark:text-red-400 hover:bg-red-500 hover:text-white border-2 border-transparent hover:border-slate-900 dark:hover:border-slate-600 transition-all active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-40"
+                                                title="Hapus halaman"
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5 shrink-0" strokeWidth={3} />
+                                            </button>
+                                        </div>
+                                        {/* Desktop: grip di kiri baris */}
+                                        {canReorder ? (
+                                            <div
+                                                draggable
+                                                onDragStart={(e) => handlePageDragStart(e, page.id)}
+                                                onTouchStart={(e) => handlePageTouchStart(e, page.id)}
+                                                className="hidden lg:flex items-center justify-center shrink-0 cursor-grab active:cursor-grabbing text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-400 touch-none h-full"
+                                                title="Drag untuk pindah urutan"
+                                            >
+                                                <GripVertical className="w-3.5 h-3.5" strokeWidth={3} />
+                                            </div>
+                                        ) : (
+                                            <div className="hidden lg:block w-3.5 shrink-0" aria-hidden />
+                                        )}
+                                    </>
                                 )}
                                 <button
                                     type="button"
                                     onClick={() => setSelectedManualPageId(page.id)}
-                                    className="flex flex-1 min-w-0 flex-col lg:flex-row gap-1.5 lg:gap-3 p-0 rounded-lg border-0 bg-transparent text-left lg:items-center"
+                                    className="flex w-full flex-1 min-w-0 flex-col items-center lg:flex-row lg:items-center gap-1 lg:gap-3 p-0 rounded-lg border-0 bg-transparent text-left"
                                 >
                                     <div className="w-full lg:w-14 aspect-[3/4] lg:h-[76px] bg-slate-100 dark:bg-slate-800 rounded-md overflow-hidden flex-shrink-0 border-2 border-slate-900 dark:border-slate-700 relative lg:group-hover:shadow-[1.5px_1.5px_0_0_#334155] dark:group-hover:shadow-[2px_2px_0_0_#334155] transition-all">
                                         <img src={page.image_url} loading="lazy" decoding="async" className="w-full h-full object-cover" alt={label} />
@@ -877,6 +1083,20 @@ export default function FlipbookLayoutEditor({ album, onPlayVideo, onUpdateAlbum
                                         </div>
                                     </div>
                                 </button>
+                                {canManage && (
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            setDeletePageConfirm({ id: page.id, label })
+                                        }}
+                                        disabled={isDeletingPage}
+                                        className="hidden lg:flex shrink-0 items-center justify-center p-1.5 h-full rounded-lg text-red-500 dark:text-red-400 hover:bg-red-500 hover:text-white border-2 border-transparent hover:border-slate-900 dark:hover:border-slate-600 transition-all active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-40"
+                                        title="Hapus halaman"
+                                    >
+                                        <Trash2 className="w-3.5 h-3.5 shrink-0" strokeWidth={3} />
+                                    </button>
+                                )}
                             </div>
                             )
                         })}
@@ -1100,6 +1320,37 @@ export default function FlipbookLayoutEditor({ album, onPlayVideo, onUpdateAlbum
                                 className="flex-1 py-4 px-6 bg-red-500 text-white border-2 border-slate-900 dark:border-slate-700 font-black rounded-2xl uppercase tracking-widest text-xs shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
                             >
                                 Ya, Hapus
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Single Page Confirmation Modal */}
+            {deletePageConfirm && (
+                <div className="fixed inset-0 bg-slate-900/40 dark:bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+                    <div className="bg-white dark:bg-slate-900 border-2 border-slate-900 dark:border-slate-700 rounded-[32px] p-8 max-w-md w-full shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] animate-in zoom-in-95 duration-200">
+                        <div className="w-16 h-16 bg-red-100 dark:bg-red-950/50 border-2 border-slate-900 dark:border-slate-700 rounded-2xl flex items-center justify-center mb-6">
+                            <Trash2 className="w-8 h-8 text-red-500 dark:text-red-400" strokeWidth={3} />
+                        </div>
+                        <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2 uppercase tracking-tight">Hapus Halaman</h3>
+                        <p className="text-xs font-bold text-slate-400 dark:text-slate-500 mb-8 uppercase tracking-wide leading-relaxed">
+                            Hapus <strong className="text-red-500 dark:text-red-400">{deletePageConfirm.label}</strong> beserta hotspot di halaman ini? Tindakan ini tidak dapat dibatalkan.
+                        </p>
+                        <div className="flex gap-4">
+                            <button
+                                onClick={() => setDeletePageConfirm(null)}
+                                disabled={isDeletingPage}
+                                className="flex-1 py-4 px-6 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white border-2 border-slate-900 dark:border-slate-700 font-black rounded-2xl uppercase tracking-widest text-xs shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-50"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                onClick={() => handleDeletePage(deletePageConfirm.id)}
+                                disabled={isDeletingPage}
+                                className="flex-1 py-4 px-6 bg-red-500 text-white border-2 border-slate-900 dark:border-slate-700 font-black rounded-2xl uppercase tracking-widest text-xs shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-50"
+                            >
+                                {isDeletingPage ? 'Menghapus...' : 'Ya, Hapus'}
                             </button>
                         </div>
                     </div>

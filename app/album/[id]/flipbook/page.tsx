@@ -1,11 +1,44 @@
 'use client'
 
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { ChevronLeft, Loader2, X } from 'lucide-react'
 import ManualFlipbookViewer from '@/components/yearbook/components/ManualFlipbookViewer'
 import { apiUrl } from '@/lib/api-url'
 import { asObject, asString, getErrorMessage } from '@/components/yearbook/utils/response-narrowing'
+
+type VideoPopupMode = 'blob' | 'direct' | 'youtube'
+
+function isStorageVideoUrl(url: string): boolean {
+  return url.includes('/api/files/') || url.includes('/storage/')
+}
+
+function isDirectVideoFileUrl(url: string): boolean {
+  return /\.(mp4|webm|mov|m4v)(\?|#|$)/i.test(url)
+}
+
+function getYoutubeEmbedUrl(url: string): string | null {
+  try {
+    const u = new URL(url)
+    let videoId: string | null = null
+    if (u.hostname.includes('youtu.be')) {
+      videoId = u.pathname.replace(/^\//, '').split('/')[0] || null
+    } else if (u.hostname.includes('youtube.com')) {
+      videoId = u.searchParams.get('v')
+    }
+    if (!videoId) return null
+    const params = new URLSearchParams({
+      autoplay: '1',
+      controls: '0',
+      modestbranding: '1',
+      rel: '0',
+      playsinline: '1',
+    })
+    return `https://www.youtube.com/embed/${videoId}?${params}`
+  } catch {
+    return null
+  }
+}
 
 type ManualFlipbookPage = {
   id: string
@@ -26,6 +59,13 @@ export default function PublicFlipbookPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [albumName, setAlbumName] = useState<string>('Preview Flipbook')
+  const [videoPopupUrl, setVideoPopupUrl] = useState<string | null>(null)
+  const [videoPopupError, setVideoPopupError] = useState<string | null>(null)
+  const [videoPopupLoading, setVideoPopupLoading] = useState(false)
+  const [videoPlaySrc, setVideoPlaySrc] = useState<string | null>(null)
+  const [videoPopupMode, setVideoPopupMode] = useState<VideoPopupMode | null>(null)
+  const videoPlayBlobUrlRef = useRef<string | null>(null)
+  const fullscreenRootRef = useRef<HTMLDivElement>(null)
 
   const fetchPages = useCallback(async () => {
     if (!id) return
@@ -62,13 +102,90 @@ export default function PublicFlipbookPage() {
     fetchPages()
   }, [fetchPages])
 
+  const closeVideoPopup = useCallback(() => {
+    setVideoPopupUrl(null)
+    setVideoPopupError(null)
+    setVideoPopupLoading(false)
+    setVideoPlaySrc(null)
+    setVideoPopupMode(null)
+    const blob = videoPlayBlobUrlRef.current
+    videoPlayBlobUrlRef.current = null
+    if (blob) URL.revokeObjectURL(blob)
+  }, [])
+
+  useEffect(() => {
+    if (!videoPopupUrl || !id) return
+
+    let cancelled = false
+    setVideoPopupLoading(true)
+    setVideoPopupError(null)
+    setVideoPlaySrc(null)
+    setVideoPopupMode(null)
+
+    const blob = videoPlayBlobUrlRef.current
+    videoPlayBlobUrlRef.current = null
+    if (blob) URL.revokeObjectURL(blob)
+
+    const youtubeEmbed = getYoutubeEmbedUrl(videoPopupUrl)
+    if (youtubeEmbed) {
+      setVideoPopupMode('youtube')
+      setVideoPlaySrc(youtubeEmbed)
+      setVideoPopupLoading(false)
+      return () => { cancelled = true }
+    }
+
+    if (videoPopupUrl.startsWith('http') && !isStorageVideoUrl(videoPopupUrl)) {
+      if (isDirectVideoFileUrl(videoPopupUrl)) {
+        setVideoPopupMode('direct')
+        setVideoPlaySrc(videoPopupUrl)
+        setVideoPopupLoading(false)
+        return () => { cancelled = true }
+      }
+      setVideoPopupLoading(false)
+      setVideoPopupError('Video eksternal tidak dapat diputar di popup. Buka link di tab baru.')
+      return () => { cancelled = true }
+    }
+
+    const load = async () => {
+      try {
+        const res = await fetch(
+          apiUrl(`/api/albums/${id}/video-play/public?url=${encodeURIComponent(videoPopupUrl)}`),
+          { cache: 'no-store' },
+        )
+        if (!res.ok) {
+          const data = asObject(await res.json().catch(() => ({})))
+          if (!cancelled) {
+            setVideoPopupError(getErrorMessage(data, 'Video tidak dapat dimuat'))
+          }
+          return
+        }
+        const blobData = await res.blob()
+        if (cancelled) return
+        const objectUrl = URL.createObjectURL(blobData)
+        videoPlayBlobUrlRef.current = objectUrl
+        setVideoPopupMode('blob')
+        setVideoPlaySrc(objectUrl)
+      } catch {
+        if (!cancelled) setVideoPopupError('Video tidak dapat dimuat')
+      } finally {
+        if (!cancelled) setVideoPopupLoading(false)
+      }
+    }
+
+    void load()
+
+    return () => {
+      cancelled = true
+      const u = videoPlayBlobUrlRef.current
+      videoPlayBlobUrlRef.current = null
+      if (u) URL.revokeObjectURL(u)
+    }
+  }, [videoPopupUrl, id])
+
   const handlePlayVideo = (url: string) => {
     if (!url) return
-    if (url.startsWith('http') && !url.includes('/storage/')) {
-      window.open(url, '_blank', 'noopener,noreferrer')
-    } else {
-      window.open(apiUrl(`/api/albums/${id}/video-play/public?url=${encodeURIComponent(url)}`), '_blank', 'noopener,noreferrer')
-    }
+    setVideoPopupError(null)
+    setVideoPopupUrl(url)
   }
 
   const handleGoBack = () => {
@@ -138,8 +255,12 @@ export default function PublicFlipbookPage() {
   }
 
   return (
-    <div className="h-[100dvh] bg-slate-50 dark:bg-slate-950 flex flex-col overflow-hidden transition-colors duration-500">
-      <header className="shrink-0 flex items-center justify-between gap-3 px-3 py-2 bg-slate-50 dark:bg-slate-950 border-b-2 border-slate-900 dark:border-slate-800 z-10 relative">
+    <div
+      ref={fullscreenRootRef}
+      className="flipbook-fullscreen-shell h-[100dvh] bg-white dark:bg-slate-950 flex flex-col overflow-hidden transition-colors duration-500"
+    >
+      {/* Match admin preview header shell (mobile) */}
+      <header className="shrink-0 flex items-center justify-between gap-3 px-3 bg-amber-300 dark:bg-slate-900 border-b-2 border-black dark:border-slate-700 z-10 relative h-14">
         {isEmbedded ? (
           <button
             type="button"
@@ -152,13 +273,15 @@ export default function PublicFlipbookPage() {
           <button
             type="button"
             onClick={() => router.back()}
-            className="flex flex-shrink-0 items-center justify-center w-8 h-8 lg:w-auto lg:h-auto lg:px-3 lg:py-1.5 gap-1.5 text-xs font-black text-slate-900 bg-white border-2 border-slate-900 rounded-lg shadow-[2px_2px_0_0_#0f172a] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all active:scale-95"
+            className="flex flex-shrink-0 items-center justify-center w-7 h-7 lg:w-auto lg:h-auto lg:px-2.5 lg:py-1 gap-1 text-[11px] font-black text-slate-900 bg-white border-2 border-slate-900 rounded-lg shadow-[1.5px_1.5px_0_0_#0f172a] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all active:scale-95"
           >
             <ChevronLeft className="w-4 h-4" strokeWidth={3} />
             <span className="hidden lg:inline uppercase tracking-widest">Kembali</span>
           </button>
         )}
-        <span className="flex-1 text-sm sm:text-base font-black text-slate-900 dark:text-white uppercase tracking-tight truncate text-center">{albumName}</span>
+        <span className="absolute left-1/2 -translate-x-1/2 text-sm sm:text-base font-black text-slate-900 dark:text-white uppercase tracking-tight truncate text-center max-w-[70%] sm:max-w-[60%]">
+          {albumName}
+        </span>
         <div className="flex-shrink-0 flex items-center justify-end w-8 lg:w-10">
           <img src="/img/logo.webp" alt="Logo" className="w-6 h-6 object-contain opacity-80" />
         </div>
@@ -169,8 +292,86 @@ export default function PublicFlipbookPage() {
           onPlayVideo={handlePlayVideo}
           className="h-full w-full"
           albumId={id}
+          fullscreenRootRef={fullscreenRootRef}
+          // Spacing preset (must match admin preview).
+          chromePaddingYExtraMobile={10}
+          chromePaddingYExtraDesktop={24}
+          chromePaddingXExtraMobile={-8}
+          chromePaddingXExtraDesktop={0}
+          centerNudgeDownPxMobile={6}
+          centerNudgeDownPxDesktop={8}
         />
       </main>
+
+      {videoPopupUrl && (
+        <div
+          className="fixed inset-0 z-[100] bg-slate-900/80 dark:bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={closeVideoPopup}
+        >
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); closeVideoPopup() }}
+            className="absolute top-4 right-4 z-10 w-10 h-10 bg-white dark:bg-slate-800 border-2 border-black dark:border-slate-700 rounded-xl flex items-center justify-center shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all text-slate-900 dark:text-white"
+            aria-label="Tutup video"
+          >
+            <X className="w-6 h-6" strokeWidth={3} />
+          </button>
+          <div
+            className="relative inline-flex max-w-[min(100%,42rem)] max-h-[min(85vh,calc(100dvh-6rem))] flex-col items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="relative inline-block max-w-full max-h-[min(85vh,calc(100dvh-6rem))] rounded-[24px] overflow-hidden border-2 border-slate-900 dark:border-slate-700 bg-black shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b]">
+              {videoPopupLoading && !videoPlaySrc && (
+                <div className="flex min-h-[160px] min-w-[240px] flex-col items-center justify-center gap-3 px-8 py-10">
+                  <Loader2 className="h-10 w-10 animate-spin text-white" aria-hidden />
+                  <span className="text-xs font-black uppercase tracking-widest text-white/70">Memuat video…</span>
+                </div>
+              )}
+              {videoPlaySrc && videoPopupMode === 'youtube' && (
+                <iframe
+                  src={videoPlaySrc}
+                  title="Video hotspot"
+                  className="block aspect-video w-[min(calc(100vw-2rem),42rem)] max-h-[min(85vh,calc(100dvh-6rem))] border-0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              )}
+              {videoPlaySrc && (videoPopupMode === 'blob' || videoPopupMode === 'direct') && (
+                <video
+                  src={videoPlaySrc}
+                  autoPlay
+                  playsInline
+                  className="block max-h-[min(85vh,calc(100dvh-6rem))] max-w-[min(calc(100vw-2rem),42rem)] w-auto h-auto"
+                  onError={() => setVideoPopupError('Video tidak dapat dimuat')}
+                  onEnded={closeVideoPopup}
+                />
+              )}
+              {videoPopupError && (
+                <div className="flex min-h-[160px] min-w-[240px] flex-col items-center justify-center gap-3 bg-white/95 dark:bg-slate-900/95 p-6 text-center">
+                  <p className="text-sm font-black text-red-500 uppercase tracking-widest">{videoPopupError}</p>
+                  {videoPopupUrl.startsWith('http') && !isStorageVideoUrl(videoPopupUrl) && (
+                    <a
+                      href={videoPopupUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[10px] font-black uppercase tracking-widest text-indigo-600 underline"
+                    >
+                      Buka di tab baru
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    onClick={closeVideoPopup}
+                    className="px-6 py-3 bg-red-500 text-white border-2 border-black dark:border-slate-700 rounded-2xl font-black text-xs uppercase tracking-widest shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
+                  >
+                    Tutup
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

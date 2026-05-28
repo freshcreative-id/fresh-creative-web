@@ -127,6 +127,7 @@ export type YearbookClassesViewProps = {
   backLabel?: string
   teacherSearchQuery?: string
   classMemberSearchQuery?: string
+  fullscreenRootRef?: React.RefObject<HTMLElement | null>
 }
 
 export default function YearbookClassesView(props: YearbookClassesViewProps) {

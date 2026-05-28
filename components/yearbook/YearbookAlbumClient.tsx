@@ -216,6 +216,7 @@ export default function YearbookAlbumClient({
   const isFlipbookPreview = uiSection === 'flipbook' && (flipbookPreviewMode || !canManage)
   const isAiLabsToolActiveTop = uiSection === 'ai-labs' && !!aiLabsTool
   const latestClickedSectionRef = useRef<string | null>(null)
+  const flipbookFullscreenRootRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (latestClickedSectionRef.current) {
@@ -267,9 +268,10 @@ export default function YearbookAlbumClient({
     return () => window.removeEventListener('resize', handleResize)
   }, [activeSection, handleSectionChange])
 
-  // Lock body scroll when in flipbook or AI labs tool mode (to prevent the whole page from scrolling)
+  // Lock body scroll only for "full-canvas" experiences.
+  // IMPORTANT: Flipbook editor needs page scroll on mobile (forms/panels), so we only lock during preview/viewer.
   useEffect(() => {
-    if (isFlipbookMode || isAiLabsToolActiveTop) {
+    if (isFlipbookPreview || isAiLabsToolActiveTop) {
       document.body.style.overflow = 'hidden'
       document.body.style.overscrollBehavior = 'none'
       document.documentElement.style.overflow = 'hidden'
@@ -292,7 +294,7 @@ export default function YearbookAlbumClient({
       document.documentElement.style.height = ''
       document.body.style.height = ''
     }
-  }, [isFlipbookMode, isAiLabsToolActiveTop])
+  }, [isFlipbookPreview, isAiLabsToolActiveTop])
 
   // Popup video: endpoint video-play wajib Authorization Bearer — muat dengan fetchWithAuth lalu blob URL.
   useEffect(() => {
@@ -1665,8 +1667,13 @@ export default function YearbookAlbumClient({
     const aiLabsToolLabel: Record<string, string> = { tryon: 'V-Tryon', pose: 'Pose', 'image-editor': 'Image Editor', photogroup: 'Photo Group', phototovideo: 'Photo to Video' }
     const isAiLabsToolActive = uiSection === 'ai-labs' && !!aiLabsTool
     const isManagementSubSection = (['classes', 'sambutan'].includes(uiSection) || isCoverView) && canManage
-    const mobileFirstWrapper = `w-full mx-auto bg-white dark:bg-slate-950 lg:max-w-full flex flex-col ${(isFlipbookMode || isAiLabsToolActive) ? 'fixed inset-0 overflow-hidden' : 'min-h-0'}`
-    const contentWrapper = 'max-w-[420px] md:max-w-full w-full mx-auto'
+    // Only force fixed/fullscreen shell for canvas-like preview modes.
+    // Flipbook editor must be allowed to scroll on mobile.
+    const mobileFirstWrapper = `w-full mx-auto bg-white dark:bg-slate-950 lg:max-w-full flex flex-col ${(isFlipbookPreview || isAiLabsToolActive) ? 'fixed inset-0 overflow-hidden' : 'min-h-0'}`
+    const isFlipbookPreviewShell = uiSection === 'flipbook' && (flipbookPreviewMode || !canManage)
+    const contentWrapper = isFlipbookPreviewShell
+      ? 'w-full max-w-none mx-0'
+      : 'max-w-[420px] md:max-w-full w-full mx-auto'
 
     const aiLabsBackHref = album?.id ? (useAdminBack ? `/admin/album/yearbook/${album.id}?section=ai-labs` : `/user/album/yearbook/${album.id}?section=ai-labs`) : effectiveBackHref
     const sectionTitle =
@@ -1700,7 +1707,10 @@ export default function YearbookAlbumClient({
             : null
 
     return (
-      <div className={mobileFirstWrapper}>
+      <div
+        ref={isFlipbookPreviewShell ? flipbookFullscreenRootRef : undefined}
+        className={`${mobileFirstWrapper}${isFlipbookPreviewShell ? ' flipbook-fullscreen-shell' : ''}`}
+      >
         {/* Sticky Header - BackLink + judul section sejajar (mobile + desktop) */}
         {showBackLink && (
           <div className="flex sticky top-0 z-50 bg-amber-300 dark:bg-slate-900 border-b-2 border-black dark:border-slate-700 px-3 lg:px-4 h-14 items-center gap-3 lg:gap-4">
@@ -1910,6 +1920,7 @@ export default function YearbookAlbumClient({
             albumId={id ?? ''}
             flipbookPreviewMode={flipbookPreviewMode}
             setFlipbookPreviewMode={setFlipbookPreviewMode}
+            fullscreenRootRef={isFlipbookPreviewShell ? flipbookFullscreenRootRef : undefined}
             mobileMenuOpen={mobileMenuOpen}
             setMobileMenuOpen={setMobileMenuOpen}
             drawerMode={mobileMenuMode}
@@ -2041,38 +2052,48 @@ export default function YearbookAlbumClient({
             >
               <X className="w-6 h-6" strokeWidth={3} />
             </button>
-            <div className="relative w-full max-w-2xl rounded-[32px] overflow-hidden" onClick={(e) => e.stopPropagation()}>
-              <div className="aspect-video bg-black rounded-[24px] overflow-hidden relative">
-                {videoPopupLoading && (
-                  <div className="absolute inset-0 z-[1] flex flex-col items-center justify-center gap-3 bg-black">
+            <div
+              className="relative inline-flex max-w-[min(100%,42rem)] max-h-[min(85vh,calc(100dvh-6rem))] flex-col items-center justify-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="relative inline-block max-w-full max-h-[min(85vh,calc(100dvh-6rem))] rounded-[24px] overflow-hidden border-2 border-slate-900 dark:border-slate-700 bg-black shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b]">
+                {videoPopupLoading && !videoPlayBlobUrl && (
+                  <div className="flex min-h-[160px] min-w-[240px] flex-col items-center justify-center gap-3 px-8 py-10">
                     <Loader2 className="h-10 w-10 animate-spin text-white" aria-hidden />
                     <span className="text-xs font-black uppercase tracking-widest text-white/70">Memuat video…</span>
                   </div>
                 )}
                 {videoPlayBlobUrl ? (
-                  <video
-                    src={videoPlayBlobUrl}
-                    autoPlay
-                    playsInline
-                    className="relative z-0 h-full w-full object-contain"
-                    onError={() => setVideoPopupError('Video tidak dapat dimuat')}
-                    onEnded={() => { setVideoPopupUrl(null); setVideoPopupError(null) }}
-                  />
+                  <>
+                    <video
+                      src={videoPlayBlobUrl}
+                      autoPlay
+                      playsInline
+                      className="block max-h-[min(85vh,calc(100dvh-6rem))] max-w-[min(calc(100vw-2rem),42rem)] w-auto h-auto"
+                      onError={() => setVideoPopupError('Video tidak dapat dimuat')}
+                      onEnded={() => { setVideoPopupUrl(null); setVideoPopupError(null) }}
+                    />
+                    {videoPopupLoading && (
+                      <div className="absolute inset-0 z-[1] flex flex-col items-center justify-center gap-3 bg-black/80">
+                        <Loader2 className="h-10 w-10 animate-spin text-white" aria-hidden />
+                      </div>
+                    )}
+                  </>
                 ) : null}
-              </div>
 
-              {videoPopupError && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/95 dark:bg-slate-900/95 p-6 text-center">
-                  <p className="text-sm font-black text-red-500 uppercase tracking-widest mb-4">{videoPopupError}</p>
-                  <button
-                    type="button"
-                    onClick={() => { setVideoPopupUrl(null); setVideoPopupError(null) }}
-                    className="px-6 py-3 bg-red-500 text-white border-2 border-black dark:border-slate-700 rounded-2xl font-black text-xs uppercase tracking-widest shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
-                  >
-                    Tutup
-                  </button>
-                </div>
-              )}
+                {videoPopupError && (
+                  <div className="flex min-h-[160px] min-w-[240px] flex-col items-center justify-center bg-white/95 dark:bg-slate-900/95 p-6 text-center">
+                    <p className="text-sm font-black text-red-500 uppercase tracking-widest mb-4">{videoPopupError}</p>
+                    <button
+                      type="button"
+                      onClick={() => { setVideoPopupUrl(null); setVideoPopupError(null) }}
+                      className="px-6 py-3 bg-red-500 text-white border-2 border-black dark:border-slate-700 rounded-2xl font-black text-xs uppercase tracking-widest shadow-[1.5px_1.5px_0_0_#334155] dark:shadow-[1.5px_1.5px_0_0_#1e293b] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
+                    >
+                      Tutup
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}

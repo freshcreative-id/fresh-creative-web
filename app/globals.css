@@ -886,65 +886,238 @@ html.dark body {
   transition: transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1);
   box-sizing: border-box;
   position: relative;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
-/* Efek tumpukan kertas untuk ketebalan buku (Super Ringan & Optimized) */
-.bg-paper-stack {
-  background-color: #fff;
-  /* Menggunakan satu gradien sederhana untuk mensimulasikan noise/garis tanpa beban render berat */
-  background-image: linear-gradient(to bottom,
-      rgba(0, 0, 0, 0.05) 0%,
-      rgba(0, 0, 0, 0.02) 2%,
-      rgba(255, 255, 255, 0) 5%,
-      rgba(0, 0, 0, 0.03) 95%,
-      rgba(0, 0, 0, 0.06) 100%);
-  border-left: 1px solid rgba(0, 0, 0, 0.05);
-  border-right: 1px solid rgba(0, 0, 0, 0.05);
+/* Cegah bleed halaman saat putaran cover ↔ back */
+.flip-book-wrapper.is-section-flipping .flip-book-3d-rotator {
+  overflow: hidden;
+  contain: layout style;
+}
+
+.flip-book-wrapper.is-section-flipping .stf__wrapper,
+.flip-book-wrapper.is-section-flipping .stf__block {
+  overflow: hidden !important;
+}
+
+.flip-book-wrapper.is-section-flipping .page-content {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.section-flip-pages {
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.flip-book-3d-rotator.is-flipping-next .section-flip-pages--animating,
+.flip-book-3d-rotator.is-flipping-prev .section-flip-pages--animating {
+  animation: section-flip-page-visibility 0.85s linear forwards;
+}
+
+@keyframes section-flip-page-visibility {
+  0%,
+  30%,
+  70%,
+  100% {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  34%,
+  66% {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+/* Jilid buku di poros tengah — tampak realistis saat rotator ±90° */
+.section-flip-spine-scene {
+  position: absolute;
+  inset: 0;
+  z-index: 25;
+  pointer-events: none;
+  transform-style: preserve-3d;
+}
+
+.section-flip-spine-block {
+  position: absolute;
+  top: 1.5%;
+  bottom: 1.5%;
+  left: 50%;
+  width: clamp(38px, 5.2%, 54px);
+  transform: translateX(-50%) rotateY(90deg);
+  transform-style: preserve-3d;
+  border-radius: 3px;
+  opacity: 0;
+  animation: section-flip-spine-visibility 0.85s linear forwards;
+  box-shadow:
+    -6px 0 14px -4px rgba(0, 0, 0, 0.35),
+    6px 0 14px -4px rgba(0, 0, 0, 0.28);
+}
+
+.section-flip-spine-block__pages {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-color: #ebe6dc;
+  background-image:
+    repeating-linear-gradient(to bottom,
+      rgba(0, 0, 0, 0.11) 0,
+      rgba(0, 0, 0, 0.11) 0.5px,
+      transparent 0.5px,
+      transparent 2.2px,
+      rgba(255, 255, 255, 0.55) 2.2px,
+      rgba(255, 255, 255, 0.55) 2.8px),
+    linear-gradient(90deg,
+      #c8c0b2 0%,
+      #f5f1e8 42%,
+      #d8d0c4 100%);
+  border: 1px solid rgba(0, 0, 0, 0.14);
+}
+
+.section-flip-spine-block__shade {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 28%;
+  pointer-events: none;
+}
+
+.section-flip-spine-block__shade--left {
+  left: 0;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.22), transparent);
+  border-radius: 3px 0 0 3px;
+}
+
+.section-flip-spine-block__shade--right {
+  right: 0;
+  background: linear-gradient(270deg, rgba(0, 0, 0, 0.18), transparent);
+  border-radius: 0 3px 3px 0;
+}
+
+@keyframes section-flip-spine-visibility {
+  0%,
+  28%,
+  72%,
+  100% {
+    opacity: 0;
+  }
+
+  34%,
+  66% {
+    opacity: 1;
+  }
+}
+
+/* Dark mode: jilid lebih terang dari bg (#020617) — tumpukan kertas + highlight tepi */
+.dark .section-flip-spine-block {
+  box-shadow:
+    -1px 0 0 rgba(255, 255, 255, 0.14),
+    1px 0 0 rgba(255, 255, 255, 0.1),
+    -10px 0 22px -3px rgba(0, 0, 0, 0.75),
+    10px 0 22px -3px rgba(0, 0, 0, 0.65),
+    0 0 24px rgba(0, 0, 0, 0.45);
+}
+
+.dark .section-flip-spine-block__pages {
+  background-color: #a8b0bc;
+  background-image:
+    repeating-linear-gradient(to bottom,
+      rgba(15, 23, 42, 0.55) 0,
+      rgba(15, 23, 42, 0.55) 0.5px,
+      transparent 0.5px,
+      transparent 1.8px,
+      rgba(255, 255, 255, 0.42) 1.8px,
+      rgba(255, 255, 255, 0.42) 2.4px),
+    linear-gradient(90deg,
+      #6b7280 0%,
+      #d1d5db 36%,
+      #f1f5f9 50%,
+      #cbd5e1 64%,
+      #6b7280 100%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.dark .section-flip-spine-block__shade--left {
+  background: linear-gradient(90deg, rgba(2, 6, 23, 0.65) 0%, rgba(2, 6, 23, 0.15) 55%, transparent 100%);
+}
+
+.dark .section-flip-spine-block__shade--right {
+  background: linear-gradient(270deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.06) 45%, transparent 100%);
+}
+
+.dark .flip-book-wrapper.is-section-flipping .section-flip-spine-scene::before {
+  content: '';
+  position: absolute;
+  inset: 3% 38%;
+  border-radius: 6px;
+  background: radial-gradient(ellipse at center, rgba(15, 23, 42, 0.55) 0%, transparent 72%);
+  pointer-events: none;
+  opacity: 0;
+  animation: section-flip-spine-visibility 0.85s linear forwards;
 }
 
 .flip-book-3d-rotator.is-flipping-next {
-  animation: book-flip-next 0.8s cubic-bezier(0.45, 0.05, 0.55, 0.95) forwards;
+  animation: book-flip-next 0.85s ease-in-out forwards;
   z-index: 100;
+  transition: none;
+  transform-origin: center center;
 }
 
 .flip-book-3d-rotator.is-flipping-prev {
-  animation: book-flip-prev 0.8s cubic-bezier(0.45, 0.05, 0.55, 0.95) forwards;
+  animation: book-flip-prev 0.85s ease-in-out forwards;
   z-index: 100;
+  transition: none;
+  transform-origin: center center;
 }
 
+/* Berhenti sebentar di ±90° (tampilkan jilid), swap halaman saat tersembunyi */
 @keyframes book-flip-next {
   0% {
-    transform: rotateY(0deg) scale(1);
+    transform: rotate3d(0, 1, 0, 0deg) scale3d(1, 1, 1);
   }
 
-  49.999% {
-    transform: rotateY(-90deg) scale(0.85);
+  30% {
+    transform: rotate3d(0, 1, 0, -90deg) scale3d(0.97, 0.97, 1);
   }
 
-  50% {
-    transform: rotateY(90deg) scale(0.85);
+  68% {
+    transform: rotate3d(0, 1, 0, -90deg) scale3d(0.97, 0.97, 1);
+  }
+
+  68.01% {
+    transform: rotate3d(0, 1, 0, 90deg) scale3d(0.97, 0.97, 1);
   }
 
   100% {
-    transform: rotateY(0deg) scale(1);
+    transform: rotate3d(0, 1, 0, 0deg) scale3d(1, 1, 1);
   }
 }
 
 @keyframes book-flip-prev {
   0% {
-    transform: rotateY(0deg) scale(1);
+    transform: rotate3d(0, 1, 0, 0deg) scale3d(1, 1, 1);
   }
 
-  49.999% {
-    transform: rotateY(90deg) scale(0.85);
+  30% {
+    transform: rotate3d(0, 1, 0, 90deg) scale3d(0.97, 0.97, 1);
   }
 
-  50% {
-    transform: rotateY(-90deg) scale(0.85);
+  68% {
+    transform: rotate3d(0, 1, 0, 90deg) scale3d(0.97, 0.97, 1);
+  }
+
+  68.01% {
+    transform: rotate3d(0, 1, 0, -90deg) scale3d(0.97, 0.97, 1);
   }
 
   100% {
-    transform: rotateY(0deg) scale(1);
+    transform: rotate3d(0, 1, 0, 0deg) scale3d(1, 1, 1);
   }
 }
 
@@ -962,6 +1135,30 @@ html.dark body {
   background-color: #f8fafc;
   background-image: linear-gradient(145deg, #ffffff 0%, #f8fafc 40%, #f1f5f9 70%, #e2e8f0 100%);
   box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.04), inset 0 0 8px rgba(0, 0, 0, 0.02);
+}
+
+/* Fullscreen shell: header + flipbook (public / preview admin) */
+.flipbook-fullscreen-shell:fullscreen {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: #ffffff;
+}
+
+.dark .flipbook-fullscreen-shell:fullscreen {
+  background: #020617;
+}
+
+.flipbook-fullscreen-shell:fullscreen > header {
+  flex-shrink: 0;
+}
+
+.flipbook-fullscreen-shell:fullscreen > main,
+.flipbook-fullscreen-shell:fullscreen > .flex-1 {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* Fullscreen: background terang + halaman kosong tetap putih */
