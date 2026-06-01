@@ -242,6 +242,7 @@ export default function YearbookClassesViewUI(props: any) {
   const searchParams = useSearchParams()
   const aiLabsTool = searchParams.get('tool')
   const isAiLabsToolActive = sidebarMode === 'ai-labs' && !!aiLabsTool
+  const isFlipbookPreviewShell = sidebarMode === 'flipbook' && (flipbookPreviewMode || !canManage)
 
   const stripOriginForDisplay = (url: string) => {
     if (!url) return ''
@@ -918,7 +919,7 @@ export default function YearbookClassesViewUI(props: any) {
   const isManagementSubSection = (['classes', 'sambutan'].includes(sidebarMode) || isCoverView) && canManage
 
   return (
-    <div className={`flex flex-col w-full lg:max-w-full ${(sidebarMode === 'flipbook' || isAiLabsToolActive) ? 'flex-1 min-h-0 overflow-hidden lg:h-auto lg:overflow-visible' : 'min-h-0'}`}>
+    <div className={`flex flex-col w-full lg:max-w-full ${isFlipbookPreviewShell ? 'flex-1 min-h-0 overflow-hidden' : isAiLabsToolActive ? 'flex-1 min-h-0' : 'min-h-0'}`}>
       <YearbookMobileNav
         pathname={pathname}
         effectiveAlbumId={effectiveAlbumId ?? ''}
@@ -955,13 +956,13 @@ export default function YearbookClassesViewUI(props: any) {
         backLabel={props.backLabel}
       />
       {/* Main Content - Header already sticky in parent (page.tsx) */}
-      <div className={`flex-1 flex flex-col ${((sidebarMode === 'flipbook') || isAiLabsToolActive) ? 'p-0 overflow-hidden' : isManagementSubSection ? 'p-0 sm:p-4' : 'p-4 pb-8'}`}>
+      <div className={`flex-1 flex flex-col min-h-0 ${isFlipbookPreviewShell ? 'p-0 overflow-hidden' : isAiLabsToolActive ? 'p-0' : isManagementSubSection ? 'p-0 sm:p-4' : 'p-4 pb-8'}`}>
 
 
 
-        <div className={`flex flex-col lg:flex-row gap-0 flex-1 ${((sidebarMode === 'flipbook' && (flipbookPreviewMode || !canManage)) || isAiLabsToolActive) ? 'lg:pl-0' : 'lg:pl-48'} lg:px-0 lg:py-0`}>
+        <div className={`flex flex-col lg:flex-row gap-0 flex-1 min-h-0 ${(isFlipbookPreviewShell || isAiLabsToolActive) ? 'lg:pl-0' : 'lg:pl-48'} lg:px-0 lg:py-0`}>
           {/* Icon Sidebar untuk desktop - Fixed di kiri (disembunyikan saat fitur AI Labs aktif atau flipbook preview aktif) */}
-          {!isAiLabsToolActive && !(sidebarMode === 'flipbook' && (flipbookPreviewMode || !canManage)) && (
+          {!isAiLabsToolActive && !isFlipbookPreviewShell && (
             <IconSidebar
               pathname={pathname}
               albumId={effectiveAlbumId}
@@ -1303,8 +1304,8 @@ export default function YearbookClassesViewUI(props: any) {
             {/* Main content - scrollable container */}
             <main
               ref={mainContentRef}
-              className={`flex-1 ${(sidebarMode === 'flipbook' || isAiLabsToolActive) ? 'overflow-hidden pb-0' : 'overflow-y-auto pb-6 lg:pb-0'} ${
-                (sidebarMode === 'flipbook' && (flipbookPreviewMode || !canManage)) || isAiLabsToolActive
+              className={`flex-1 min-h-0 ${isFlipbookPreviewShell ? 'overflow-hidden pb-0' : 'overflow-y-auto pb-6 lg:pb-0'} ${
+                isFlipbookPreviewShell || isAiLabsToolActive
                   ? 'px-0'
                   : 'px-2 sm:px-6 lg:px-12'
               } rounded-t-none relative
@@ -1594,7 +1595,7 @@ export default function YearbookClassesViewUI(props: any) {
                 </div>
               </div>
 
-              <div className={!isCoverView && sidebarMode === 'ai-labs' ? 'block w-full h-full' : 'hidden'}>
+              <div className={!isCoverView && sidebarMode === 'ai-labs' ? 'block w-full min-h-0' : 'hidden'}>
                 {/* AI Labs - Fitur (Try On, Pose, dll.) tetap di album, URL ?tool=... */}
                 <AILabsView
                   album={album}

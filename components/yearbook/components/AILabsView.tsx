@@ -195,14 +195,20 @@ export default function AILabsView({ album, aiLabsTool, aiLabsFeaturesByPackage 
         }
 
         const renderTool = (Tool: React.ComponentType<any>) => (
-            <div className="max-w-5xl mx-auto px-3 py-3 sm:p-4">
+            <div className="max-w-5xl mx-auto px-3 py-3 sm:p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
                 <Tool creditCost={getFeatureUseCost(aiLabsTool) ?? 0} />
             </div>
         )
 
         if (aiLabsTool === 'tryon') return renderTool(TryOn)
         if (aiLabsTool === 'pose') return renderTool(Pose)
-        if (aiLabsTool === 'image-editor') return <ImageEditor creditCost={getFeatureUseCost(aiLabsTool) ?? 0} />
+        if (aiLabsTool === 'image-editor') {
+            return (
+                <div className="max-w-5xl mx-auto px-3 py-3 sm:p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+                    <ImageEditor creditCost={getFeatureUseCost(aiLabsTool) ?? 0} />
+                </div>
+            )
+        }
         if (aiLabsTool === 'photogroup') return renderTool(PhotoGroup)
         if (aiLabsTool === 'phototovideo') return renderTool(PhotoToVideo)
     }
@@ -216,7 +222,7 @@ export default function AILabsView({ album, aiLabsTool, aiLabsFeaturesByPackage 
     ]
 
     return (
-        <div className="max-w-6xl mx-auto px-4 py-4 sm:p-6">
+        <div className="max-w-6xl mx-auto px-4 py-4 sm:p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
                 {AI_LABS_FEATURES_USER.map((feature, index) => {
                     const Icon = FEATURE_ICONS[index] ?? Video

@@ -271,7 +271,7 @@ export default function YearbookAlbumClient({
   // Lock body scroll only for "full-canvas" experiences.
   // IMPORTANT: Flipbook editor needs page scroll on mobile (forms/panels), so we only lock during preview/viewer.
   useEffect(() => {
-    if (isFlipbookPreview || isAiLabsToolActiveTop) {
+    if (isFlipbookPreview) {
       document.body.style.overflow = 'hidden'
       document.body.style.overscrollBehavior = 'none'
       document.documentElement.style.overflow = 'hidden'
@@ -294,7 +294,7 @@ export default function YearbookAlbumClient({
       document.documentElement.style.height = ''
       document.body.style.height = ''
     }
-  }, [isFlipbookPreview, isAiLabsToolActiveTop])
+  }, [isFlipbookPreview])
 
   // Popup video: endpoint video-play wajib Authorization Bearer — muat dengan fetchWithAuth lalu blob URL.
   useEffect(() => {
@@ -1669,7 +1669,7 @@ export default function YearbookAlbumClient({
     const isManagementSubSection = (['classes', 'sambutan'].includes(uiSection) || isCoverView) && canManage
     // Only force fixed/fullscreen shell for canvas-like preview modes.
     // Flipbook editor must be allowed to scroll on mobile.
-    const mobileFirstWrapper = `w-full mx-auto bg-white dark:bg-slate-950 lg:max-w-full flex flex-col ${(isFlipbookPreview || isAiLabsToolActive) ? 'fixed inset-0 overflow-hidden' : 'min-h-0'}`
+    const mobileFirstWrapper = `w-full mx-auto bg-white dark:bg-slate-950 lg:max-w-full flex flex-col ${isFlipbookPreview ? 'fixed inset-0 overflow-hidden' : 'min-h-0'}`
     const isFlipbookPreviewShell = uiSection === 'flipbook' && (flipbookPreviewMode || !canManage)
     const contentWrapper = isFlipbookPreviewShell
       ? 'w-full max-w-none mx-0'

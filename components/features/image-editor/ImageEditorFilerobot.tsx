@@ -31,6 +31,7 @@ if (typeof window !== 'undefined') {
       (combined.includes('React does not recognize') &&
         (combined.includes('disableHover') ||
           combined.includes('isCollapsed') ||
+          combined.includes('isAccordion') ||
           combined.includes('noWrap') ||
           combined.includes('watermarkTool') ||
           combined.includes('showTabsDrawer') ||
@@ -216,6 +217,36 @@ const ImageEditor: React.FC<EditorProps> = ({
           }
           .FIE_tabs_navbar {
             box-shadow: none !important;
+          }
+
+          /* Sidebar tab & panel opsi (Adjust, Finetune, Filter, …) — scroll tanpa scrollbar */
+          .FIE_root .FIE_tabs_navbar,
+          .FIE_root .FIE_tabs-drawer,
+          .FIE_root .FIE_tools-bar-wrapper,
+          .FIE_root .FIE_tools-bar,
+          .FIE_root .FIE_tool-options-wrapper,
+          .FIE_root .FIE_editor-tab,
+          .FIE_root .SfxAccordionDetails-root {
+            -ms-overflow-style: none !important;
+            scrollbar-width: none !important;
+          }
+          .FIE_root .FIE_tabs_navbar::-webkit-scrollbar,
+          .FIE_root .FIE_tabs-drawer::-webkit-scrollbar,
+          .FIE_root .FIE_tools-bar-wrapper::-webkit-scrollbar,
+          .FIE_root .FIE_tools-bar::-webkit-scrollbar,
+          .FIE_root .FIE_tool-options-wrapper::-webkit-scrollbar,
+          .FIE_root .FIE_editor-tab::-webkit-scrollbar,
+          .FIE_root .SfxAccordionDetails-root::-webkit-scrollbar,
+          .FIE_root .FIE_tools-bar-wrapper *::-webkit-scrollbar,
+          .FIE_root .FIE_tool-options-wrapper *::-webkit-scrollbar {
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
+          }
+          .FIE_root .FIE_tools-bar-wrapper *,
+          .FIE_root .FIE_tool-options-wrapper * {
+            scrollbar-width: none !important;
+            -ms-overflow-style: none !important;
           }
           
           /* Forced Mobile Bottom Navbar Override */

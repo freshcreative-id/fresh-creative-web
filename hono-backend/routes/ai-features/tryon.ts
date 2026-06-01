@@ -3,7 +3,7 @@ import type { Context } from 'hono'
 import { getD1 } from '../../lib/edge-env'
 import { fileToDataUri, formDataString, requestIsMultipart } from '../../lib/ai-multipart'
 import { deductCreditsFromD1 } from '../../lib/credits'
-import { generateVirtualTryOnGemini, imageStringToGeminiInput } from '../../lib/gemini-tryon'
+import { generateVirtualTryOnGemini, imageStringToGeminiInput, resolveAspectRatioForPerson } from '../../lib/gemini-tryon'
 import { respondWithReplicateFriendlyError } from '../../lib/replicate-error-response'
 import Replicate from 'replicate'
 import { AppEnv, requireAuthJwt } from '../../middleware'
@@ -117,10 +117,15 @@ tryon.post('/', async (c) => {
     const person0 = await imageStringToGeminiInput(body.human_img)
     if (!person0) return c.json({ ok: false, error: 'Gambar orang tidak valid' }, 400)
 
+    // Kunci aspect ratio dari foto asli agar full-body (mis. sepatu) tidak terpotong saat generate / chain.
+    const personAspectRatio = resolveAspectRatioForPerson(person0)
+
     if (body.garm_img) {
       const cloth = await imageStringToGeminiInput(body.garm_img)
       if (!cloth) return c.json({ ok: false, error: 'Gambar garment tidak valid' }, 400)
-      const result = await generateVirtualTryOnGemini(replicate, person0, cloth)
+      const result = await generateVirtualTryOnGemini(replicate, person0, cloth, {
+        aspectRatio: personAspectRatio,
+      })
       return c.json({ ok: true, results: [result] })
     }
 
@@ -130,7 +135,9 @@ tryon.post('/', async (c) => {
       for (let i = 0; i < garments.length; i++) {
         const cloth = await imageStringToGeminiInput(garments[i])
         if (!cloth) return c.json({ ok: false, error: `Gambar garment ${i + 1} tidak valid` }, 400)
-        finalResult = await generateVirtualTryOnGemini(replicate, curPerson, cloth)
+        finalResult = await generateVirtualTryOnGemini(replicate, curPerson, cloth, {
+          aspectRatio: personAspectRatio,
+        })
         if (i < garments.length - 1) {
           const next = await imageStringToGeminiInput(finalResult)
           if (!next) return c.json({ ok: false, error: 'Gagal memproses hasil intermediate' }, 500)
@@ -144,7 +151,9 @@ tryon.post('/', async (c) => {
       garments.map(async (g, i) => {
         const cloth = await imageStringToGeminiInput(g)
         if (!cloth) throw new Error(`Gambar garment ${i + 1} tidak valid`)
-        return generateVirtualTryOnGemini(replicate, person0, cloth)
+        return generateVirtualTryOnGemini(replicate, person0, cloth, {
+          aspectRatio: personAspectRatio,
+        })
       })
     )
     return c.json({ ok: true, results })
