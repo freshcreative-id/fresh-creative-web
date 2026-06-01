@@ -267,9 +267,7 @@ CREATE TABLE IF NOT EXISTS feature_unlocks (
   id TEXT PRIMARY KEY NOT NULL,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   album_id TEXT NOT NULL REFERENCES albums(id) ON DELETE CASCADE,
-  feature_type TEXT NOT NULL CHECK (
-    feature_type IN ('flipbook', 'tryon', 'pose', 'photogroup', 'phototovideo', 'image_remove_bg')
-  ),
+  feature_type TEXT NOT NULL,
   credits_spent INTEGER NOT NULL DEFAULT 0,
   unlocked_at TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE (user_id, album_id, feature_type)

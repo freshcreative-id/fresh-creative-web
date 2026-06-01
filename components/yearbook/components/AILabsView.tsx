@@ -18,6 +18,7 @@ const FEATURE_SLUG_MAP: Record<string, string> = {
     'image-editor': 'image_remove_bg',
     'photogroup': 'photogroup',
     'phototovideo': 'phototovideo',
+    'enhance': 'enhance',
 }
 
 interface AILabsViewProps {
@@ -53,6 +54,7 @@ const Pose = dynamic(() => import('@/components/features/Pose'), { ssr: false, l
 const ImageEditor = dynamic(() => import('@/components/features/ImageEditor'), { ssr: false, loading: () => <ToolLoading label="Image Editor" /> })
 const PhotoGroup = dynamic(() => import('@/components/features/PhotoGroup'), { ssr: false, loading: () => <ToolLoading label="Photo Group" /> })
 const PhotoToVideo = dynamic(() => import('@/components/features/PhotoToVideo'), { ssr: false, loading: () => <ToolLoading label="Photo to Video" /> })
+const Enhance = dynamic(() => import('@/components/features/enhance/EnhanceClient'), { ssr: false, loading: () => <ToolLoading label="Photo Enhance" /> })
 
 // Preload helpers to make navigation feel instant.
 const preloadTool: Record<string, () => void> = {
@@ -61,6 +63,7 @@ const preloadTool: Record<string, () => void> = {
     'image-editor': () => { void import('@/components/features/ImageEditor') },
     photogroup: () => { void import('@/components/features/PhotoGroup') },
     phototovideo: () => { void import('@/components/features/PhotoToVideo') },
+    enhance: () => { void import('@/components/features/enhance/EnhanceClient') },
 }
 
 export default function AILabsView({ album, aiLabsTool, aiLabsFeaturesByPackage = [], featureUnlocks = [], featureCreditCosts = {}, featureUseCosts = {}, onFeatureUnlocked, featureUnlocksLoaded = false }: AILabsViewProps) {
@@ -211,6 +214,7 @@ export default function AILabsView({ album, aiLabsTool, aiLabsFeaturesByPackage 
         }
         if (aiLabsTool === 'photogroup') return renderTool(PhotoGroup)
         if (aiLabsTool === 'phototovideo') return renderTool(PhotoToVideo)
+        if (aiLabsTool === 'enhance') return renderTool(Enhance)
     }
 
     const FEATURE_COLORS = [

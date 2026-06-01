@@ -34,7 +34,7 @@ export type YearbookAlbumClientProps = {
   initialAccess?: { access: Record<string, ClassAccess | null>, requests: Record<string, ClassRequest | null> }
 }
 
-const AI_LABS_TOOLS = ['tryon', 'pose', 'image-editor', 'photogroup', 'phototovideo'] as const
+const AI_LABS_TOOLS = ['tryon', 'pose', 'image-editor', 'photogroup', 'phototovideo', 'enhance'] as const
 
 export default function YearbookAlbumClient({
   backHref = '/user/albums',
@@ -1664,7 +1664,7 @@ export default function YearbookAlbumClient({
     const uiSection = activeSection === 'cover' ? 'classes' : activeSection
     const showBackLink = true
     const currentClass = album?.classes?.[classIndex]
-    const aiLabsToolLabel: Record<string, string> = { tryon: 'V-Tryon', pose: 'Pose', 'image-editor': 'Image Editor', photogroup: 'Photo Group', phototovideo: 'Photo to Video' }
+    const aiLabsToolLabel: Record<string, string> = { tryon: 'V-Tryon', pose: 'Pose', 'image-editor': 'Image Editor', photogroup: 'Photo Group', phototovideo: 'Photo to Video', enhance: 'Photo Enhance' }
     const isAiLabsToolActive = uiSection === 'ai-labs' && !!aiLabsTool
     const isManagementSubSection = (['classes', 'sambutan'].includes(uiSection) || isCoverView) && canManage
     // Only force fixed/fullscreen shell for canvas-like preview modes.
