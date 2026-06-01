@@ -34,17 +34,17 @@ export async function generatePoseEditGemini(
 ): Promise<string> {
   const instruction =
     (poseInstruction || '').trim() || 'Change the pose to a natural standing pose.'
-  const prompt = `Edit the provided photo to change ONLY the person's pose.
+  const prompt = `Edit the provided photo to change ONLY the person's pose. Make the output a high-fidelity, extremely sharp, and crisp image in 4k/8k resolution.
 
 Target pose instruction:
 ${instruction}
 
 CRITICAL CONSTRAINTS (must follow):
-1) Preserve identity: face, hair, skin tone, body shape, and age must remain the same.
+1) Preserve identity: face, hair, skin tone, body shape, and age must remain the same with sharp focus.
 2) Preserve outfit EXACTLY: clothing type, colors, patterns, logos, textures, accessories, and layering must remain unchanged.
 3) Preserve background and lighting as much as possible.
 4) Do NOT change the person's outfit, do NOT restyle, do NOT replace clothing.
-5) Keep the result photorealistic.`
+5) Keep the result photorealistic, highly detailed, and completely avoid soft focus or blur.`
 
   const output = await runWith429Retry(
     () =>
@@ -52,7 +52,7 @@ CRITICAL CONSTRAINTS (must follow):
         input: {
           prompt,
           image_input: [toDataUri(subject)],
-          output_format: 'jpg',
+          output_format: 'png',
         },
       }),
     5

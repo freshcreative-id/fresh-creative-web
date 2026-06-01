@@ -219,21 +219,22 @@ export async function generateVirtualTryOnGemini(
   options?: { aspectRatio?: GeminiFlashAspectRatio }
 ): Promise<string> {
   const aspectRatio = options?.aspectRatio ?? resolveAspectRatioForPerson(person)
-  const prompt = `Create a high-fidelity, photorealistic virtual try-on image.
+  const prompt = `Create a high-fidelity, photorealistic, and extremely sharp virtual try-on image in 4k/8k resolution.
 Take the person from the first image and dress them in the clothing from the second image.
 
 **Crucial Instructions:**
-1. **Preserve Person's Identity:** The person's original features—including their face, hair, body shape, skin tone, and pose—must remain completely unchanged and preserved with high fidelity.
+1. **Preserve Person's Identity:** The person's original features—including their face, hair, body shape, skin tone, and pose—must remain completely unchanged and preserved with high fidelity and sharp focus.
 2. **Realistic Fit:** The clothing from the second image should be realistically draped and fitted onto the person, matching the lighting, shadows, and overall style of the original photo of the person.
 3. **Keep Background:** Do not alter the background of the person's image. The final output should be just the person with the new clothing seamlessly integrated.
-4. **Preserve Full Framing:** Match the first (person) image exactly — same aspect ratio, zoom level, and composition. Do not crop, reframe, or zoom in. If the full body including feet and shoes is visible in the original, the entire body including feet and shoes must remain fully visible in the output.`
+4. **Preserve Full Framing:** Match the first (person) image exactly — same aspect ratio, zoom level, and composition. Do not crop, reframe, or zoom in. If the full body including feet and shoes is visible in the original, the entire body including feet and shoes must remain fully visible in the output.
+5. **Quality:** The result MUST BE crisp, highly detailed, and not blurry. Avoid any soft focus or blurring.`
 
   const output = await runWith429Retry(() =>
     replicate.run(REPLICATE_GEMINI_FLASH_IMAGE, {
       input: {
         prompt,
         image_input: [toDataUri(person), toDataUri(clothing)],
-        output_format: 'jpg',
+        output_format: 'png',
         aspect_ratio: aspectRatio,
       },
     })

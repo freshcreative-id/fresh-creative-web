@@ -68,7 +68,7 @@ function buildPhotoGroupPrompt(
   }
   lines.push('')
   lines.push(
-    'OUTPUT: One high-quality JPEG, natural consistent lighting across the group, single coherent group photo.'
+    'OUTPUT: One extremely sharp, high-quality PNG/image in 4k/8k resolution, highly detailed, with natural consistent lighting across the group. Avoid any blur or soft focus.'
   )
   return lines.join('\n')
 }
@@ -90,7 +90,7 @@ export async function generatePhotoGroupGemini(
         input: {
           prompt,
           image_input: subjects.map(toDataUri),
-          output_format: 'jpg',
+          output_format: 'png',
           aspect_ratio: 'match_input_image',
         },
       }),
