@@ -241,6 +241,7 @@ export default function YearbookClassesViewUI(props: any) {
 
   const searchParams = useSearchParams()
   const aiLabsTool = searchParams.get('tool')
+  const canManage = isOwner || isAlbumAdmin || isGlobalAdmin
   const isAiLabsToolActive = sidebarMode === 'ai-labs' && !!aiLabsTool
   const isFlipbookPreviewShell = sidebarMode === 'flipbook' && (flipbookPreviewMode || !canManage)
 
@@ -254,8 +255,6 @@ export default function YearbookClassesViewUI(props: any) {
       return url
     }
   }
-
-  const canManage = isOwner || isAlbumAdmin || isGlobalAdmin
 
   const fetchMembers = useCallback(async () => {
     if (!album?.id) return
