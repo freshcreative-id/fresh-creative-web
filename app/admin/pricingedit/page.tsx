@@ -116,11 +116,12 @@ const AI_FEATURE_LABELS: Record<string, string> = {
   photogroup: 'Photo Group',
   phototovideo: 'Photo to Video',
   image_remove_bg: 'Image Editor',
+  enhance: 'Photo Enhance',
   flipbook_unlock: 'Flipbook',
 }
 
 // Slugs yang punya biaya generate (bukan unlock-only)
-const GENERATE_SLUGS = new Set(['tryon', 'pose', 'photogroup', 'phototovideo', 'image_remove_bg'])
+const GENERATE_SLUGS = new Set(['tryon', 'pose', 'photogroup', 'phototovideo', 'image_remove_bg', 'enhance'])
 
 const DEFAULT_PACKAGE_FORM: Partial<PricingPackage> = {
   name: '',

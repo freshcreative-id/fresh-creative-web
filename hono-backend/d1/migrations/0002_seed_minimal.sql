@@ -20,7 +20,8 @@ VALUES
   ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3', 'photogroup', 1, 20),
   ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4', 'phototovideo', 1, 20),
   ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa5', 'image_remove_bg', 1, 10),
-  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa6', 'flipbook_unlock', 0, 50);
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa6', 'flipbook_unlock', 0, 50),
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa7', 'enhance', 1, 30);
 
 INSERT OR REPLACE INTO credit_packages (id, name, credits, price, popular)
 VALUES

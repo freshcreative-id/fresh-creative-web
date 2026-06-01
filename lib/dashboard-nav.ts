@@ -50,6 +50,7 @@ export const FILES_SECTION_ADMIN: NavSection = {
 export const AI_LABS_FEATURES_USER = [
   { href: '/user/tryon', label: 'V-Tryon', description: 'Ubah Outfit' },
   { href: '/user/pose', label: 'Pose', description: 'Ubah pose foto' },
+  { href: '/user/enhance', label: 'Photo Enhance', description: 'Pertajam foto blur' },
   { href: '/user/image-editor', label: 'Image Editor', description: 'Edit & Remove Background' },
   { href: '/user/photogroup', label: 'Photo Group', description: 'Gabungkan foto' },
   { href: '/user/phototovideo', label: 'Photo to Video', description: 'Ubah foto jadi video singkat' },
@@ -58,6 +59,7 @@ export const AI_LABS_FEATURES_USER = [
 export const AI_LABS_FEATURES_ADMIN = [
   { href: '/admin/tryon', label: 'V-Tryon', description: 'Ubah Outfit' },
   { href: '/admin/pose', label: 'Pose', description: 'Ubah pose foto' },
+  { href: '/admin/enhance', label: 'Photo Enhance', description: 'Pertajam foto blur' },
   { href: '/admin/image-editor', label: 'Image Editor', description: 'Edit & Remove Background' },
   { href: '/admin/photogroup', label: 'Photo Group', description: 'Gabungkan foto' },
   { href: '/admin/phototovideo', label: 'Photo to Video', description: 'Ubah foto jadi video singkat' },

@@ -17,6 +17,7 @@ import aiFeaturesPhotogroup from './routes/ai-features/photogroup'
 import aiFeaturesPhototovideo from './routes/ai-features/phototovideo'
 import aiFeaturesPose from './routes/ai-features/pose'
 import aiFeaturesTryon from './routes/ai-features/tryon'
+import aiFeaturesEnhance from './routes/ai-features/enhance'
 
 // ── Albums (root) ──
 import albums from './routes/albums/albums'
@@ -201,6 +202,7 @@ app.route('/api/ai-features/photogroup', aiFeaturesPhotogroup)
 app.route('/api/ai-features/phototovideo', aiFeaturesPhototovideo)
 app.route('/api/ai-features/pose', aiFeaturesPose)
 app.route('/api/ai-features/tryon', aiFeaturesTryon)
+app.route('/api/ai-features/enhance', aiFeaturesEnhance)
 
 // Albums root
 app.route('/api/albums', albums)
