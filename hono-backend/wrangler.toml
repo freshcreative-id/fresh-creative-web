@@ -1,5 +1,5 @@
 # Harus sama dengan nama Worker di Cloudflare (Workers & Pages → project ini).
-name = "fresh-creative"
+name = "fresh-creative-backend"
 main = "worker.ts"
 compatibility_date = "2026-03-27"
 compatibility_flags = ["nodejs_compat"]
@@ -21,7 +21,7 @@ port = 8787
 [[d1_databases]]
 binding = "DB"
 database_name = "fresh-creative"
-database_id = "5113454c-f2cb-4010-9fdc-73235535ee98"
+database_id = "70b99a79-7662-43a6-a9c3-d3e7a2add1a5"
 migrations_dir = "d1/migrations"
 remote = true
 
